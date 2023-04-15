@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"time"
 	"workScheduler/internal/api/models"
 )
@@ -19,12 +20,17 @@ func NewErrorNotFound(text string) *ErrorNotFound {
 	}
 }
 
+type ReadWriteRepository interface {
+	ReadRepository
+	WriteRepository
+}
+
 type ReadRepository interface {
-	GetById(id string) (*models.WorkItem, error)
-	List(from time.Time, to time.Time, zones []string, statuses []string) ([]*models.WorkItem, error)
+	GetById(ctx context.Context, id string) (*models.WorkItem, error)
+	List(ctx context.Context, from time.Time, to time.Time, zones []string, statuses []string) ([]*models.WorkItem, error)
 }
 
 type WriteRepository interface {
-	Add(work *models.WorkItem) (*models.WorkItem, error)
-	Update(work *models.WorkItem) (*models.WorkItem, error)
+	Add(ctx context.Context, work *models.WorkItem) (*models.WorkItem, error)
+	Update(ctx context.Context, work *models.WorkItem) (*models.WorkItem, error)
 }

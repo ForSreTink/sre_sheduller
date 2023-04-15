@@ -1,6 +1,7 @@
 package inmemoryrepository
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -15,7 +16,17 @@ type InMemoryRepository struct {
 	Mu   *sync.Mutex
 }
 
+func NewInmemoryRepository() *InMemoryRepository {
+	return &InMemoryRepository{
+		Data: make(map[string]*models.WorkItem),
+		Mu:   &sync.Mutex{},
+	}
+}
+
 func inArray(arr []string, i string) bool {
+	if len(arr) == 0 {
+		return true
+	}
 	for _, v := range arr {
 		if i == v {
 			return true
@@ -24,7 +35,7 @@ func inArray(arr []string, i string) bool {
 	return false
 }
 
-func (inm *InMemoryRepository) GetById(id string) (*models.WorkItem, error) {
+func (inm *InMemoryRepository) GetById(ctx context.Context, id string) (*models.WorkItem, error) {
 	inm.Mu.Lock()
 	defer inm.Mu.Unlock()
 
@@ -36,29 +47,21 @@ func (inm *InMemoryRepository) GetById(id string) (*models.WorkItem, error) {
 	return work, nil
 }
 
-func (inm *InMemoryRepository) List(from time.Time, to time.Time, zones []string) ([]*models.WorkItem, error) {
+func (inm *InMemoryRepository) List(ctx context.Context, from time.Time, to time.Time, zones []string, statuses []string) ([]*models.WorkItem, error) {
 	inm.Mu.Lock()
 	defer inm.Mu.Unlock()
 
 	works := []*models.WorkItem{}
 
-	if len(zones) == 0 {
-		for _, work := range inm.Data {
-			if work.StartDate.Unix() >= from.Unix() && work.StartDate.Unix() < to.Unix() {
-				works = append(works, work)
-			}
-		}
-	} else {
-		for _, work := range inm.Data {
-			if work.StartDate.Unix() >= from.Unix() && work.StartDate.Unix() < to.Unix() && inArray(zones, work.Zone) {
-				works = append(works, work)
-			}
+	for _, work := range inm.Data {
+		if work.StartDate.Unix() >= from.Unix() && work.StartDate.Unix() < to.Unix() && inArray(zones, work.Zone) && inArray(statuses, work.Status) {
+			works = append(works, work)
 		}
 	}
 	return works, nil
 }
 
-func (inm *InMemoryRepository) Add(work *models.WorkItem) (*models.WorkItem, error) {
+func (inm *InMemoryRepository) Add(ctx context.Context, work *models.WorkItem) (*models.WorkItem, error) {
 	inm.Mu.Lock()
 	defer inm.Mu.Unlock()
 
@@ -73,7 +76,7 @@ func (inm *InMemoryRepository) Add(work *models.WorkItem) (*models.WorkItem, err
 	return work, nil
 }
 
-func (inm *InMemoryRepository) Update(work *models.WorkItem) (*models.WorkItem, error) {
+func (inm *InMemoryRepository) Update(ctx context.Context, work *models.WorkItem) (*models.WorkItem, error) {
 	inm.Mu.Lock()
 	defer inm.Mu.Unlock()
 
