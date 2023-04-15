@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"workScheduler/internal/api/models"
+	"workScheduler/internal/api/models/repository"
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
@@ -60,7 +61,7 @@ func NewMongoClient() (ctx context.Context, c *MongoClient, err error) {
 	return
 }
 
-var _ models.WriteRepository = (*MongoClient)(nil)
+var _ repository.ReadWriteRepository = (*MongoClient)(nil)
 
 func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
 
@@ -89,8 +90,6 @@ func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result
 	return
 }
 
-var _ models.ReadRepository = (*MongoClient)(nil)
-
 func (m *MongoClient) GetById(ctx context.Context, id string) (result *models.WorkItem, err error) {
 	filter := bson.D{{"workId", id}}
 	err = m.worksCollection.FindOne(ctx, filter).Decode(&result)
@@ -113,6 +112,9 @@ func (m *MongoClient) List(ctx context.Context, from time.Time, to time.Time, zo
 
 	fmt.Printf("searching for work documents with filer %+v\n", filter)
 	cursor, err := m.worksCollection.Find(ctx, filter)
+	if err != nil {
+		return
+	}
 	defer cursor.Close(ctx)
 
 	for cursor.Next(ctx) {
