@@ -30,19 +30,19 @@ func NewMongoClient(ctx context.Context) (c *MongoClient, err error) {
 		return
 	}
 	databaseName := os.Getenv("MONGO_DATABASE")
-	if uri == "" {
+	if databaseName == "" {
 		err = fmt.Errorf("empty MONGO_DATABASE for connection string")
 		return
 	}
 	collectionName := os.Getenv("MONGO_WORKS_COLLECTION")
-	if uri == "" {
+	if collectionName == "" {
 		err = fmt.Errorf("empty MONGO_WORKS_COLLECTION for connection string")
 		return
 	}
 
-	opts := options.Client().
-		SetWriteConcern(writeconcern.New(writeconcern.WMajority())).
-		ApplyURI(uri)
+	opts := options.Client().ApplyURI(uri).
+		SetWriteConcern(writeconcern.New(writeconcern.WMajority()))
+
 	retryWrites := os.Getenv("MONGO_RETRY_WRITES")
 	if retries, err := strconv.ParseBool(retryWrites); err == nil && retries {
 		opts.SetRetryWrites(retries)
@@ -51,6 +51,8 @@ func NewMongoClient(ctx context.Context) (c *MongoClient, err error) {
 	if timeout, err := strconv.ParseInt(timeoutMs, 10, 32); err == nil && timeout != 0 {
 		opts.SetTimeout(time.Duration(timeout) * time.Millisecond)
 	}
+
+	c = &MongoClient{}
 
 	c.client, err = mongo.Connect(ctx, opts)
 	if err != nil {

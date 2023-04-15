@@ -16,10 +16,11 @@ RUN CGO_ENABLED=0 go build -o /sheduler ./cmd/sheduler/main.go
 ##
 FROM scratch
 
-WORKDIR /
+WORKDIR /app
 
-COPY --from=build /sheduler /sheduler
+COPY --from=build /app/openapi/api.yaml /app/openapi/api.yaml
+COPY --from=build /sheduler /app/sheduler
 
 EXPOSE 8000
 
-ENTRYPOINT ["/sheduler"]
+ENTRYPOINT ["/app/sheduler"]

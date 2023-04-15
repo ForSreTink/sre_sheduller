@@ -15,16 +15,20 @@ services:
       - db-log:/var/log
     healthcheck:
         test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/workScheduler --quiet
-        interval: 30s
+        interval: 20s
         timeout: 10s
         retries: 5
 
-  sheduller:
+  sheduler:
     build:
       context: .
       dockerfile: build/sheduler/Dockerfile
+    ports:
+      - 8080:8080
     environment:
       MONGO_URI: mongodb://root:example@mongo:27017/
+      MONGO_DATABASE: workScheduler
+      MONGO_WORKS_COLLECTION: works
     depends_on:
       mongo:
         condition: service_healthy

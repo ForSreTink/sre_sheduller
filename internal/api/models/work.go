@@ -11,4 +11,5 @@ type WorkItem struct {
 	Status          string    `bson:"status,omitempty"`
 	WorkType        string    `bson:"workType,omitempty"`
 	Zone            string    `bson:"zone,omitempty"`
+	CompressionRate float64   `bson:"compressionRate,omitempty"`
 }
