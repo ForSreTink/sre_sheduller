@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -9,11 +8,11 @@ import (
 	"os"
 
 	api "workScheduler/internal/api/app"
-	mongo "workScheduler/internal/repository/mongo_integrations"
+	handlers "workScheduler/internal/handlers"
+	inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
 
-	middleware "github.com/deepmap/oapi-codegen/pkg/chi-middleware"
-
-	"github.com/gorilla/handlers"
+	"github.com/go-openapi/runtime/middleware"
+	gorilla_handlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -21,27 +20,28 @@ func main() {
 	var port = flag.Int("port", 8080, "Port for test HTTP server")
 	flag.Parse()
 
-	swagger, err := api.GetSwagger()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
-		os.Exit(1)
-	}
-	swagger.Servers = nil
+	// ctx := context.Background()
+	// data, err := mongo.NewMongoClient(ctx)
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+	// 	os.Exit(1)
+	// }
 
-	ctx := context.Background()
-	data, err := mongo.NewMongoClient(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
-	}
-
-	// data := inmemoryrepository.NewInmemoryRepository()
+	data := inmemoryrepository.NewInmemoryRepository()
 	sheduller := api.NewApi(data)
 
+	var sh http.Handler = middleware.SwaggerUI(middleware.SwaggerUIOpts{
+		SpecURL: "./static/api.yaml",
+		Path:    "/swagger",
+	}, nil)
+
 	r := mux.NewRouter()
-	r.Use(middleware.OapiRequestValidator(swagger))
 	api.HandlerFromMux(sheduller, r)
-	loggedRouter := handlers.LoggingHandler(os.Stdout, r)
+	r.HandleFunc("/health", handlers.HealthCheckHandler).Methods("GET")
+	r.Handle("/swagger", sh).Methods("GET")
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./openapi"))))
+
+	loggedRouter := gorilla_handlers.LoggingHandler(os.Stdout, r)
 
 	s := &http.Server{
 		Handler: loggedRouter,
