@@ -21,10 +21,10 @@ type Configurator struct {
 }
 
 type Config struct {
-	WhiteList               []ZoneWindow         `yaml:"white_list"`
-	BlackList               []ZoneWindow         `yaml:"black_list"`
+	WhiteList               map[string][]Window  `yaml:"white_list"`
+	BlackList               []string             `yaml:"black_list"`
 	MinAvialableZones       int32                `yaml:"min_avialable_zones"`
-	Pauses                  []Pause              `yaml:"pauses"`
+	PausesMinutes           map[string]int32     `yaml:"pauses"`
 	MinWorkDurationMinutes  WorkDurationSettings `yaml:"min_work_duration_minutes"`
 	MaxWorkDurationMinutes  WorkDurationSettings `yaml:"max_work_duration_minutes"`
 	MaxDeadlineDays         int32                `yaml:"max_deadline_days"`
@@ -32,19 +32,9 @@ type Config struct {
 	TimeCompressionRate     float32
 }
 
-type ZoneWindow struct {
-	ZoneId  string   `yaml:"zone"`
-	Windows []Window `yaml:"windows"`
-}
-
-type Pause struct {
-	ZoneId       string `yaml:"zone"`
-	PauseMinutes int32  `yaml:"pause_minutes"`
-}
-
 type Window struct {
-	StartTime     time.Time `yaml:"start_time"`
-	DurationHours int32     `yaml:"duration"`
+	StartTime     int32 `yaml:"start_hour"`
+	DurationHours int32 `yaml:"end_hour"`
 }
 
 type WorkDurationSettings struct {
@@ -85,6 +75,8 @@ func (c *Configurator) readConfig() (config Config, err error) {
 	if err != nil {
 		return
 	}
+	config.WhiteList = make(map[string][]Window)
+	config.PausesMinutes = make(map[string]int32)
 	err = yaml.Unmarshal(file, &config)
 	if err != nil {
 		return

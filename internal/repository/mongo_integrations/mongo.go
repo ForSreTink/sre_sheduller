@@ -111,9 +111,11 @@ func (m *MongoClient) List(ctx context.Context, from time.Time, to time.Time, zo
 		orderedFilter = append(orderedFilter, bson.E{Key: "status", Value: bson.M{"$in": statuses}})
 	}
 	filter := bson.D{{Key: "$and", Value: orderedFilter}}
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{"startDate", 1}})
 
 	fmt.Printf("searching for work documents with filer %+v\n", filter)
-	cursor, err := m.worksCollection.Find(ctx, filter)
+	cursor, err := m.worksCollection.Find(ctx, filter, findOptions)
 	if err != nil {
 		return
 	}
