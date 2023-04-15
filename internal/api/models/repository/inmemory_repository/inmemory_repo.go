@@ -1,9 +1,12 @@
 package inmemoryrepository
 
 import (
+	"context"
+	"fmt"
 	"sync"
 	"time"
 	"workScheduler/internal/api/models"
+	"workScheduler/internal/api/models/repository"
 
 	"github.com/gofrs/uuid"
 )
@@ -13,13 +16,52 @@ type InMemoryRepository struct {
 	Mu   *sync.Mutex
 }
 
-func (inm *InMemoryRepository) GetById(id string) (*models.WorkItem, error) {
-
+func NewInmemoryRepository() *InMemoryRepository {
+	return &InMemoryRepository{
+		Data: make(map[string]*models.WorkItem),
+		Mu:   &sync.Mutex{},
+	}
 }
 
-func (inm *InMemoryRepository) List(from time.Time, to time.Time, zones []string) *models.WorkItem
+func inArray(arr []string, i string) bool {
+	if len(arr) == 0 {
+		return true
+	}
+	for _, v := range arr {
+		if i == v {
+			return true
+		}
+	}
+	return false
+}
 
-func (inm *InMemoryRepository) Add(work *models.WorkItem) (*models.WorkItem, error) {
+func (inm *InMemoryRepository) GetById(ctx context.Context, id string) (*models.WorkItem, error) {
+	inm.Mu.Lock()
+	defer inm.Mu.Unlock()
+
+	work, ok := inm.Data[id]
+	if !ok {
+		return nil, repository.NewErrorNotFound(fmt.Sprintf("Work with id %s not found", id))
+	}
+
+	return work, nil
+}
+
+func (inm *InMemoryRepository) List(ctx context.Context, from time.Time, to time.Time, zones []string, statuses []string) ([]*models.WorkItem, error) {
+	inm.Mu.Lock()
+	defer inm.Mu.Unlock()
+
+	works := []*models.WorkItem{}
+
+	for _, work := range inm.Data {
+		if work.StartDate.Unix() >= from.Unix() && work.StartDate.Unix() < to.Unix() && inArray(zones, work.Zone) && inArray(statuses, work.Status) {
+			works = append(works, work)
+		}
+	}
+	return works, nil
+}
+
+func (inm *InMemoryRepository) Add(ctx context.Context, work *models.WorkItem) (*models.WorkItem, error) {
 	inm.Mu.Lock()
 	defer inm.Mu.Unlock()
 
@@ -28,10 +70,19 @@ func (inm *InMemoryRepository) Add(work *models.WorkItem) (*models.WorkItem, err
 		return nil, err
 	}
 
-	work.Id = uuid
-	inm.Data[uuid] = work
+	work.Id = uuid.String()
+	inm.Data[uuid.String()] = work
 
 	return work, nil
 }
 
-func (inm *InMemoryRepository) Update(work *models.WorkItem) *models.WorkItem
+func (inm *InMemoryRepository) Update(ctx context.Context, work *models.WorkItem) (*models.WorkItem, error) {
+	inm.Mu.Lock()
+	defer inm.Mu.Unlock()
+
+	if _, ok := inm.Data[work.Id]; !ok {
+		return nil, repository.NewErrorNotFound(fmt.Sprintf("Work with id %s not found", work.Id))
+	}
+	inm.Data[work.Id] = work
+	return work, nil
+}
