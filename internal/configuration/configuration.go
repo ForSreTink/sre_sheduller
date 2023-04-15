@@ -3,6 +3,7 @@ package configuration
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"strconv"
@@ -43,8 +44,8 @@ type Pause struct {
 }
 
 type Window struct {
-	StartTime     time.Time `yaml:"start_time"`
-	DurationHours int32     `yaml:"duration"`
+	StartTime     uint32  `yaml:"start_time"`
+	DurationHours uint32     `yaml:"duration"`
 }
 
 type WorkDurationSettings struct {
@@ -76,6 +77,22 @@ func (c *Configurator) mainProcess() {
 			return
 		case <-ticker.C:
 			conf, err := c.readConfig()
+			if err != nil && !c.Started {
+				log.Fatal(err)
+			} else if err != nil {
+				log.Print("WARNING: Given config is invalid, config update ignoring")
+				continue
+			}
+			err = c.validateConfig(conf)
+			if err != nil && !c.Started {
+				log.Fatal(err)
+			} else if err != nil {
+				log.Print("WARNING: Given valid is invalid, config update ignoring")
+				continue
+			} else {
+				c.Data = &conf
+				c.Started = true
+			}
 		}
 	}
 }
@@ -90,6 +107,15 @@ func (c *Configurator) readConfig() (config Config, err error) {
 		return
 	}
 
+	return
+}
+
+func (c *Configurator) validateConfig(conf Config) error {
+	errStr := ""
+	for _, v := range conf.WhiteList {
+		if time.
+	}
+
 	var validTimeCompressionPersents = regexp.MustCompile(`^(?P<num>[0-9]{1,2})%$`)
 	if len(config.TimeCompressionPersents) != 0 {
 		if matches := validTimeCompressionPersents.FindStringSubmatch(config.TimeCompressionPersents); len(matches) > 0 {
@@ -101,12 +127,6 @@ func (c *Configurator) readConfig() (config Config, err error) {
 			return
 		}
 	}
-
-	return
-}
-
-func (c *Configurator) validateConfig(conf *Config) error {
-
 }
 
 //todo validate config??
