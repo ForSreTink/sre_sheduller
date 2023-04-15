@@ -294,7 +294,16 @@ components:
             - planned
             - cancelled
             - in_progress
-    
+        workType:
+          type: string
+          enum:
+            - manual
+            - automatic
+        priority:
+          type: string
+          enum:
+            - regular
+            - critical
     workStatus:
       type: string
       enum:
@@ -304,11 +313,21 @@ components:
     error:
       type: object
       properties:
-        error:
-          type: string
+        errorCode: 
+          type: integer
+          format: uint32
         message:
           type: string
-    
+        alternative:
+          type: array
+          items:
+            startDate:
+              type: string
+              format: date-time
+            durationMinutes:
+              type: integer
+              format: int32
+              example: 2
     moveWork:
       type: object
       required: [startDate]
