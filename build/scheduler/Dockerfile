@@ -9,7 +9,7 @@ COPY . ./
 
 RUN go mod download
 
-RUN CGO_ENABLED=0 go build -o /sheduler ./cmd/sheduler/main.go
+RUN CGO_ENABLED=0 go build -o /scheduler ./cmd/scheduler/main.go
 
 ##
 ## Deploy
@@ -19,8 +19,8 @@ FROM scratch
 WORKDIR /app
 
 COPY --from=build /app/openapi/api.yaml /app/openapi/api.yaml
-COPY --from=build /sheduler /app/sheduler
+COPY --from=build /scheduler /app/scheduler
 
 EXPOSE 8000
 
-ENTRYPOINT ["/app/sheduler"]
+ENTRYPOINT ["/app/scheduler"]

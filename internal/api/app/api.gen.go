@@ -38,11 +38,11 @@ const (
 	Manual    WorkWorkType = "manual"
 )
 
-// Defines values for GetSheduleParamsStatuses.
+// Defines values for GetscheduleParamsStatuses.
 const (
-	GetSheduleParamsStatusesCancelled  GetSheduleParamsStatuses = "cancelled"
-	GetSheduleParamsStatusesInProgress GetSheduleParamsStatuses = "in_progress"
-	GetSheduleParamsStatusesPlanned    GetSheduleParamsStatuses = "planned"
+	GetscheduleParamsStatusesCancelled  GetscheduleParamsStatuses = "cancelled"
+	GetscheduleParamsStatusesInProgress GetscheduleParamsStatuses = "in_progress"
+	GetscheduleParamsStatusesPlanned    GetscheduleParamsStatuses = "planned"
 )
 
 // Error defines model for error.
@@ -92,8 +92,8 @@ type WorkStatus string
 // WorkWorkType defines model for Work.WorkType.
 type WorkWorkType string
 
-// GetSheduleParams defines parameters for GetShedule.
-type GetSheduleParams struct {
+// GetscheduleParams defines parameters for Getschedule.
+type GetscheduleParams struct {
 	// FromDate Starts from
 	FromDate *time.Time `form:"fromDate,omitempty" json:"fromDate,omitempty"`
 
@@ -104,11 +104,11 @@ type GetSheduleParams struct {
 	Zones *[]string `form:"zones,omitempty" json:"zones,omitempty"`
 
 	// Statuses Statuses of work to get
-	Statuses *[]GetSheduleParamsStatuses `form:"statuses,omitempty" json:"statuses,omitempty"`
+	Statuses *[]GetscheduleParamsStatuses `form:"statuses,omitempty" json:"statuses,omitempty"`
 }
 
-// GetSheduleParamsStatuses defines parameters for GetShedule.
-type GetSheduleParamsStatuses string
+// GetscheduleParamsStatuses defines parameters for Getschedule.
+type GetscheduleParamsStatuses string
 
 // AddWorkJSONRequestBody defines body for AddWork for application/json ContentType.
 type AddWorkJSONRequestBody = PostWork
@@ -121,9 +121,9 @@ type ProlongateWorkByIdJSONRequestBody = ProlongateWork
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Get shedule with works
-	// (GET /shedule)
-	GetShedule(w http.ResponseWriter, r *http.Request, params GetSheduleParams)
+	// Get schedule with works
+	// (GET /schedule)
+	Getschedule(w http.ResponseWriter, r *http.Request, params GetscheduleParams)
 	// Create new planned work in avialable zone
 	// (POST /work)
 	AddWork(w http.ResponseWriter, r *http.Request)
@@ -150,14 +150,14 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.HandlerFunc) http.HandlerFunc
 
-// GetShedule operation middleware
-func (siw *ServerInterfaceWrapper) GetShedule(w http.ResponseWriter, r *http.Request) {
+// Getschedule operation middleware
+func (siw *ServerInterfaceWrapper) Getschedule(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetSheduleParams
+	var params GetscheduleParams
 
 	// ------------- Optional query parameter "fromDate" -------------
 
@@ -192,7 +192,7 @@ func (siw *ServerInterfaceWrapper) GetShedule(w http.ResponseWriter, r *http.Req
 	}
 
 	var handler = func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetShedule(w, r, params)
+		siw.Handler.Getschedule(w, r, params)
 	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -434,7 +434,7 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	r.HandleFunc(options.BaseURL+"/shedule", wrapper.GetShedule).Methods("GET")
+	r.HandleFunc(options.BaseURL+"/schedule", wrapper.Getschedule).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/work", wrapper.AddWork).Methods("POST")
 
@@ -452,25 +452,25 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xY32/bNhD+V4jbgL2okpN2L3pr0mAw0AzFHGAPRTBcxLPNhiJV8mjXC/y/D6T8K7ac",
-	"OG3apENeEls+3n28++47ijdQ2bqxhgx7KG/AV2OqMX0k56yLHxpnG3KsKD1GzeQMsppQ/KqY6vRcBoes",
-	"rDlXJnBrSl+wbjRBeZzB0LoaGUpQhl8fQwY8a6j9SiNyMM/AMzp+h5z8ruwlMr1iVdN6jWenzAjm89UT",
-	"dA5n0UcCfWrlbR9hf9CavMdRMt/r3V59ooqTtZ3Q39Zd76blabbv6HNQjiSUHzfWX3Ygb6znPcgJpVbm",
-	"4LDZU+w1g39tC3EVCd4Nju7ixMbendXWjJC/U+26Yk6fTa6V7CB3TIqyTvEseTShjhRyNAoaHWRQOcWq",
-	"Qr3BpfXSr6ieZ+TgN2M1Go0hGWOhqUjr9FmZfxpnR4687wwd03qRHq491WgCasgAA9saWVWdS7+aQPGR",
-	"MkPbFtBXTjWxIlDCxVh54clNyAlJE9K2ISmG1onBX2eCHVbXQhnRv/jNiwtlru1wKAZWh7hcnIYmhwy0",
-	"qsj4hMxgHeO+bbAakzjOe5BBcBpKGDM3ZVFMp9Mc06+5daNisdQX7/unZ38Ozl4d5718zLWO22XFaZOR",
-	"8sKPSQatKZZ2Qs638I/yXn50FI1tQwYbBSW8znv5a8igQR6nehXt2gRwRLybhD+IF/5JTBWPRayRh+S0",
-	"5W5ftmaDhafo3WFNTM5D+XHb4SDSy4uhszVkQF8anfScXaBYCCjhcyA3g2yZsGiZ6NgKIiZBbM3beXa4",
-	"ou7BwvYwJGy/E473yrOwQxFJ7A/DsjRdh17N6p3euD1GO9PAwZOPEGJ5BVsRyXAQEL9Y3I3l2/RgC/hl",
-	"zLxvbOyK6Py414v/KmuYTOIuNo1WVaJl8cnHzd1soPrV0RBK+KVYn4qKxZGoSIqexGArN6GqyA+DTm33",
-	"pvdmt0VSD6beUFIYK4Y2GBmtf39EfO15rQNg36QTm14q1dIwAx/qGt3sriZmHPl0ulj07mVcV6ymm/Ud",
-	"inDqCJmEoalYVLUljTICJwo1XmlKTN4RibdSphHdNhB5PrFy9mgZWp2BOpL0EMzrU1ck/XyHc0e7KVmT",
-	"RFQpkmzJ8gPKf4JSLLL5rCj3kIwvWZh4t6ZgcRP/9uX8zuF0y/vVTCjZNZwiMU5mfXnfdOrLpQjCQu7i",
-	"qFyrXYtohyWb2ret9i+q9Q2q1Vnd+/hStDMmSVjoUrD08yHMaS2fFXnukZ8E+On05yel2l2MuJdttW0v",
-	"Szq5dm4nJNIrlYinQYFGiuVbX3qX2Iy5w7/zxY3EU7Lv8Sf16p6lo1oPylcutl6ghfLCJleo8wNm+Y9X",
-	"4peWPLAlH9o497bp+p5ob7N+WJm0ErCKl3Dsa9IPty6g/l+tunW51lHLQ3P20oo/bSseWuLtFpzP/wsA",
-	"AP//WWQ33oEYAAA=",
+	"H4sIAAAAAAAC/+xYUW/bNhD+K8RtwF5UyUm7F721aTEYaIZiCbCHIhgu4tlmQ5EqebTrBf7vAylbdmw5",
+	"cdq0SYe8JLZ8vPt49913FK+hsnVjDRn2UF6DryZUY/pIzlkXPzTONuRYUXqMmskZZDWl+FUx1em5DA5Z",
+	"WXOqTODWlL5g3WiC8jiDkXU1MpSgDL88hgx43lD7lcbkYJGBZ3T8Fjn57ewlMr1gVdN6jWenzBgWi+4J",
+	"Oofz6COBPrHypo+wP2hN3uM4me/1bi8/UcXJ2k7pb+uudtPyONt39DkoRxLKjxvrL3qQN9bzHuSEUitz",
+	"cNjsMfaawb+2hdhFgrdnR7dxYmPvzmprxsjfqXZ9MWdPJtdK9pA7JkVZp3iePJpQRwo5GgeNDjKonGJV",
+	"od7g0nrpV1TPM3Lwm7EajcaQjLHQVKR1+qzMP42zY0fe94aOaT1PD9eeajQBNWSAgW2NrKrepV9NoPhI",
+	"mZFtC+grp5pYESjhfKK88OSm5ISkKWnbkBQj68TZX+8EO6yuhDJieP6bF+fKXNnRSJxZHeJycRKaHDLQ",
+	"qiLjEzKDdYz7usFqQuI4H0AGwWkoYcLclEUxm81yTL/m1o2L5VJfvB+evPvz7N2L43yQT7jWcbusOG0y",
+	"Ul5EWZdBUyztlJxv4R/lg/zoKBrbhgw2Ckp4mQ/yl5BBgzxJ9SpWa+OXMfFuFv4g7gKImeKJiFXykNy2",
+	"7B3K1q7zFQM4rInJeSg/brs8iwzzYuRsDRnQl0YnSWcXKNYCSvgcyM0hW+UsWiZGtpqISRNb83akHS6q",
+	"e7CwPQwJ2++E473yLOxIRB77w7CsTNehu3G90x43J2lvGjh48hFCrK9gKyIdDgLil4v7sXybJGwBv4iZ",
+	"942NjRGdHw8G8V9lDZNJ7MWm0apKvCw++bi56w1UvzoaQQm/FOuDUbE8FRVJ1JMebOUmVBX5UdCp814N",
+	"Xu02SWrD1BxKCmPFyAYjo/XvD4ivPbL1AByadGjTK7FaGWbgQ12jm9/axoxjn04Yq+69iCuLbsRZ36MK",
+	"J46QSRiaiWVdW9ooI3CqUOOlpsTlHZ14LWWa020Lkec3Vs4fLEfdQagnTffBvD56Rdovdlh3tJuSNU1E",
+	"lSLJli4/gABvUIplNp8U6e6T8RUNE+/WFCyu49+hXNw6oG54v5wLJfvmUyTGm/lQ3jWfhnIlg7AUvDgv",
+	"13rXItphyab6bev9s259g271VvcuvhTtlEkSFvoULP18CHNayydFnjvkJwF+PP35Sal2GyPuZFtt2xuT",
+	"Xq6d2imJ9F4l4nlQoJFi9eqXXig2Y+7w73R5LfGY7Hv4Sd1dtvRU6175ysXWW7RQXtjkCnV+wCz/8Ur8",
+	"3JIHtuR9G+fONl1fFu1t1g+dSSsBXbyEY1+TfrhxC/X/atWtG7aeWh6as+dW/Glb8dASb7fgYvFfAAAA",
+	"//8TW0cGhhgAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

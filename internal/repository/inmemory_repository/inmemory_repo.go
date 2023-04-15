@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"workScheduler/internal/api/models"
 	"workScheduler/internal/repository"
+	"workScheduler/internal/scheduler/models"
 
 	"github.com/gofrs/uuid"
 )

@@ -19,10 +19,10 @@ services:
         timeout: 10s
         retries: 5
 
-  sheduler:
+  scheduler:
     build:
       context: .
-      dockerfile: build/sheduler/Dockerfile
+      dockerfile: build/scheduler/Dockerfile
     ports:
       - 8080:8080
     environment:

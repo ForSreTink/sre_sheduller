@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"time"
-	"workScheduler/internal/api/models"
+	"workScheduler/internal/scheduler/models"
 )
 
 type ErrorNotFound struct {

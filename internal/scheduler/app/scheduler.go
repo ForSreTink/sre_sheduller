@@ -1,10 +1,11 @@
-package main
+package app
 
 import (
 	"context"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -19,24 +20,28 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// TODO: Отслеживать сигналы, тушить все и на монге делать коннекшен клоус + кенсел контекста
-// КОНТЕКСТЫ
-// TODO: Отслеживать изменения конфига, разбирать его (возможно с использованием сигнала)
-// Json теги для work структуры
+type Scheduler struct {
+	Ctx    context.Context
+	Server *http.Server
+}
 
-func main() {
+func NewScheduler(ctx context.Context) *Scheduler {
+	return &Scheduler{
+		Ctx: ctx,
+	}
+}
+
+func (s *Scheduler) Run() error {
 	var port = flag.Int("port", 8080, "Port for test HTTP server")
 	flag.Parse()
 
-	ctx := context.Background()
-	data, err := mongo.NewMongoClient(ctx)
+	data, err := mongo.NewMongoClient(s.Ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-		os.Exit(1)
+		return err
 	}
 
 	// data := inmemoryrepository.NewInmemoryRepository()
-	sheduller := api.NewApi(data)
+	scheduler := api.NewApi(data)
 
 	var sh http.Handler = middleware.SwaggerUI(middleware.SwaggerUIOpts{
 		SpecURL: "./static/api.yaml",
@@ -44,17 +49,28 @@ func main() {
 	}, nil)
 
 	r := mux.NewRouter()
-	api.HandlerFromMux(sheduller, r)
+	api.HandlerFromMux(scheduler, r)
 	r.HandleFunc("/health", handlers.HealthCheckHandler).Methods("GET")
 	r.Handle("/swagger", sh).Methods("GET")
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./openapi"))))
 
 	loggedRouter := gorilla_handlers.LoggingHandler(os.Stdout, r)
 
-	s := &http.Server{
-		Handler: loggedRouter,
-		Addr:    fmt.Sprintf("0.0.0.0:%d", *port),
+	s.Server = &http.Server{
+		Handler:     loggedRouter,
+		Addr:        fmt.Sprintf("0.0.0.0:%d", *port),
+		BaseContext: func(l net.Listener) context.Context { return s.Ctx },
 	}
-	// And we serve HTTP until the world ends.
-	log.Fatal(s.ListenAndServe())
+
+	go func() {
+		err = s.Server.ListenAndServe()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	return nil
+}
+
+func (s *Scheduler) Stop() {
+	s.Server.Shutdown(s.Ctx)
 }

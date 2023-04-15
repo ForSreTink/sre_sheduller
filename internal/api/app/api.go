@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"workScheduler/internal/api/models"
 	"workScheduler/internal/repository"
+	"workScheduler/internal/scheduler/models"
 )
 
 type Api struct {
@@ -52,7 +52,7 @@ func (a *Api) writeInternalError(w http.ResponseWriter, code uint32, message str
 	}
 }
 
-func (a *Api) GetShedule(w http.ResponseWriter, r *http.Request, params GetSheduleParams) {
+func (a *Api) Getschedule(w http.ResponseWriter, r *http.Request, params GetscheduleParams) {
 	defer r.Body.Close()
 }
 

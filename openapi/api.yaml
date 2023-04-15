@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Work sheduller
+  title: Work scheduler
   description: |-
     This server developed for SRE track in IT's Tinkoff Solution Cup.
   license:
@@ -183,13 +183,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/error'
 
-  /shedule:
+  /schedule:
     get:
       tags:
-        - shedule
-      summary: Get shedule with works
-      description: Get shedule with works
-      operationId: GetShedule
+        - schedule
+      summary: Get schedule with works
+      description: Get schedule with works
+      operationId: Getschedule
       parameters:
         - name: fromDate
           in: query

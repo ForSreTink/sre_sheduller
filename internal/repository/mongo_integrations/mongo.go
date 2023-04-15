@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"workScheduler/internal/api/models"
 	"workScheduler/internal/repository"
+	"workScheduler/internal/scheduler/models"
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
