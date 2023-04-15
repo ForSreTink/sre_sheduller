@@ -16,8 +16,8 @@ create_db = (connection, dataBaseName= "workScheduler", collectionName) => {
 		print("Create collection " + collectionName + " in db " + dataBaseName);
 	
 		var result = db.createCollection(collectionName);
-		checkCollectionException(result);
 		printjson(result);
+		checkCollectionException(collectionName, result);
 	}
 	else
 	{
