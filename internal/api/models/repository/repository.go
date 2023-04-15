@@ -26,5 +26,5 @@ type ReadRepository interface {
 
 type WriteRepository interface {
 	Add(work *models.WorkItem) (*models.WorkItem, error)
-	Update(work *models.WorkItem) *models.WorkItem
+	Update(work *models.WorkItem) (*models.WorkItem, error)
 }
