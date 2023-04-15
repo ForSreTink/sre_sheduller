@@ -70,10 +70,12 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 	work, err = a.RepoData.Add(r.Context(), work)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 	work_b, err := json.Marshal(work)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -86,10 +88,12 @@ func (a *Api) GetWorkById(w http.ResponseWriter, r *http.Request, workId string)
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 	work_b, err := json.Marshal(work)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -102,6 +106,7 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 
 	work.Status = "cancelled"
@@ -109,6 +114,7 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 	work_b, err := json.Marshal(work)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -120,6 +126,7 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 
 	// TODO: код для определения возможности переноса
@@ -127,6 +134,7 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 	work_b, err := json.Marshal(work)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -138,6 +146,7 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 
 	// TODO: код для определения возможности переноса
@@ -145,6 +154,7 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 	work_b, err := json.Marshal(work)
 	if err != nil {
 		a.writeInternalError(w, 500, err.Error(), []string{})
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
