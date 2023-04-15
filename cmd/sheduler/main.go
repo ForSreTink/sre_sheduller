@@ -8,10 +8,11 @@ import (
 	"os"
 
 	api "workScheduler/internal/api/app"
-	inmemoryrepository "workScheduler/internal/api/models/repository/inmemory_repository"
+	handlers "workScheduler/internal/handlers"
+	inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
 
-	middleware "github.com/deepmap/oapi-codegen/pkg/chi-middleware"
-
+	"github.com/go-openapi/runtime/middleware"
+	gorilla_handlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -19,25 +20,33 @@ func main() {
 	var port = flag.Int("port", 8080, "Port for test HTTP server")
 	flag.Parse()
 
-	swagger, err := api.GetSwagger()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
-		os.Exit(1)
-	}
-	swagger.Servers = nil
+	// ctx := context.Background()
+	// data, err := mongo.NewMongoClient(ctx)
+	// if err != nil {
+	// 	fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+	// 	os.Exit(1)
+	// }
 
 	data := inmemoryrepository.NewInmemoryRepository()
 	sheduller := api.NewApi(data)
 
+	var sh http.Handler = middleware.SwaggerUI(middleware.SwaggerUIOpts{
+		SpecURL: "./static/api.yaml",
+		Path:    "/swagger",
+	}, nil)
+
 	r := mux.NewRouter()
-	r.Use(middleware.OapiRequestValidator(swagger))
 	api.HandlerFromMux(sheduller, r)
+	r.HandleFunc("/health", handlers.HealthCheckHandler).Methods("GET")
+	r.Handle("/swagger", sh).Methods("GET")
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./openapi"))))
+
+	loggedRouter := gorilla_handlers.LoggingHandler(os.Stdout, r)
 
 	s := &http.Server{
-		Handler: r,
+		Handler: loggedRouter,
 		Addr:    fmt.Sprintf("0.0.0.0:%d", *port),
 	}
-
 	// And we serve HTTP until the world ends.
 	log.Fatal(s.ListenAndServe())
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"workScheduler/internal/api/models"
-	"workScheduler/internal/api/models/repository"
+	"workScheduler/internal/repository"
 
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,7 +23,7 @@ type MongoClient struct {
 	worksCollection *mongo.Collection
 }
 
-func NewMongoClient() (ctx context.Context, c *MongoClient, err error) {
+func NewMongoClient(ctx context.Context) (c *MongoClient, err error) {
 	uri := os.Getenv("MONGO_URI")
 	if uri == "" {
 		err = fmt.Errorf("empty MONGO_URI for connection string")
@@ -80,7 +80,7 @@ func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *m
 }
 
 func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
-	filter := bson.D{{"workId", work.Id}}
+	filter := bson.D{{Key: "workId", Value: work.Id}}
 	opts := options.Update().SetUpsert(true)
 	out, err := m.worksCollection.UpdateOne(ctx, filter, work, opts)
 	if err != nil {
@@ -91,7 +91,7 @@ func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result
 }
 
 func (m *MongoClient) GetById(ctx context.Context, id string) (result *models.WorkItem, err error) {
-	filter := bson.D{{"workId", id}}
+	filter := bson.D{{Key: "workId", Value: id}}
 	err = m.worksCollection.FindOne(ctx, filter).Decode(&result)
 	return
 }
@@ -99,16 +99,16 @@ func (m *MongoClient) GetById(ctx context.Context, id string) (result *models.Wo
 func (m *MongoClient) List(ctx context.Context, from time.Time, to time.Time, zones []string, statuses []string) (result []*models.WorkItem, err error) {
 
 	orderedFilter := bson.A{
-		bson.D{{"startDate", bson.D{{"$gte", from}}}},
-		bson.D{{"startDate", bson.D{{"$lte", from}}}},
+		bson.D{{Key: "startDate", Value: bson.D{{Key: "$gte", Value: from}}}},
+		bson.D{{Key: "startDate", Value: bson.D{{Key: "$lte", Value: from}}}},
 	}
 	if len(zones) > 0 {
-		orderedFilter = append(orderedFilter, bson.E{"zone", bson.M{"$in": zones}})
+		orderedFilter = append(orderedFilter, bson.E{Key: "zone", Value: bson.M{"$in": zones}})
 	}
 	if len(statuses) > 0 {
-		orderedFilter = append(orderedFilter, bson.E{"status", bson.M{"$in": statuses}})
+		orderedFilter = append(orderedFilter, bson.E{Key: "status", Value: bson.M{"$in": statuses}})
 	}
-	filter := bson.D{{"$and", orderedFilter}}
+	filter := bson.D{{Key: "$and", Value: orderedFilter}}
 
 	fmt.Printf("searching for work documents with filer %+v\n", filter)
 	cursor, err := m.worksCollection.Find(ctx, filter)

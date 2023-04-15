@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 	"workScheduler/internal/api/models"
-	"workScheduler/internal/api/models/repository"
+	"workScheduler/internal/repository"
 
 	"github.com/gofrs/uuid"
 )
