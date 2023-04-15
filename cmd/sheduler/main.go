@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,7 +9,7 @@ import (
 	"os"
 
 	api "workScheduler/internal/api/app"
-	inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
+	mongo "workScheduler/internal/repository/mongo_integrations"
 
 	middleware "github.com/deepmap/oapi-codegen/pkg/chi-middleware"
 
@@ -27,14 +28,14 @@ func main() {
 	}
 	swagger.Servers = nil
 
-	// ctx := context.Background()
-	// data, err := mongo.NewMongoClient(ctx)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-	// 	os.Exit(1)
-	// }
+	ctx := context.Background()
+	data, err := mongo.NewMongoClient(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
 
-	data := inmemoryrepository.NewInmemoryRepository()
+	// data := inmemoryrepository.NewInmemoryRepository()
 	sheduller := api.NewApi(data)
 
 	r := mux.NewRouter()
