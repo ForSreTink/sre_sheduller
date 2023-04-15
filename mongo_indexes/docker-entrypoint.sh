@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "MONGO_SCRIPT = $MONGO_SCRIPT"
+mongosh --host $MONGO_SCRIPTS_HOST --port $MONGO_SCRIPTS_PORT $MONGO_SCRIPT

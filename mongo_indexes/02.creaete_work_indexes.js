@@ -1,12 +1,8 @@
-/* run once on one of mongos */
-/* conn as input argument from ansible */
+var dbName = "workScheduler";
+var worksCollectionName = "works"
+var zonesCollectionName = "zones";
 
-var dbName;
-var worksCollectionName;
-var zonesCollectionName;
-
-/* create indexes */
-const create_indexes = (connection, dbName = "workScheduler", worksCollectionName = "works", zonesCollectionName = "zones") => {
+const create_indexes = (connection, dbName, worksCollectionName, zonesCollectionName) => {
 	var checkIndexException = function (indexName, result) {
 		if (result.ok === 0)
 			throw "CreateIndexException. Create index " + indexName + " failed. Code: " + result.code + "; CodeName: " + result.codeName + "; errmsg = " + result.errmsg;
@@ -18,7 +14,7 @@ const create_indexes = (connection, dbName = "workScheduler", worksCollectionNam
 	const zonesCollection = db.getCollection(zonesCollectionName);
 
     indexName = 'zoneId unique'
-    print("Create " + indexName + " index for " + zonesCollection);
+    print("Create " + indexName + " index for " + zonesCollectionName);
     result = zonesCollection.createIndex(
 		{ 'zoneId': 1 },
 		{
@@ -31,7 +27,7 @@ const create_indexes = (connection, dbName = "workScheduler", worksCollectionNam
     checkIndexException(indexName, result)
     
     indexName = 'workId unique'
-    print("Create " + indexName + " index for " + worksCollection);
+    print("Create " + indexName + " index for " + worksCollectionName);
 	result = worksCollection.createIndex(
 		{ 'workId': 1 },
 		{
@@ -44,7 +40,7 @@ const create_indexes = (connection, dbName = "workScheduler", worksCollectionNam
     checkIndexException(indexName, result)
 
     indexName = 'startDate_zone_status_compound'
-    print("Create " + indexName + " index for " + worksCollection);
+    print("Create " + indexName + " index for " + worksCollectionName);
 	result = worksCollection.createIndex(
 		{
 			"startDate": 1,
