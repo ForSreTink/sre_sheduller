@@ -1,0 +1,511 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Work sheduller",
+    "description": "This server developed for SRE track in IT's Tinkoff Solution Cup.",
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1.0.11"
+  },
+  "paths": {
+    "/work": {
+      "post": {
+        "tags": [
+          "work"
+        ],
+        "summary": "Create new planned work in avialable zone",
+        "description": "Create new planned work in avialable zone",
+        "operationId": "AddWork",
+        "requestBody": {
+          "description": "Create new planned work in avialable zone",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postWork"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Succesfull created"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work/{workId}": {
+      "get": {
+        "tags": [
+          "work"
+        ],
+        "summary": "Get planned work by id",
+        "description": "Get planned work by id",
+        "operationId": "GetWorkById",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "description": "Id of work",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Succesfull",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/work"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work with id no found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work/{workId}/cancel": {
+      "put": {
+        "tags": [
+          "work"
+        ],
+        "summary": "Cancel planned work by id",
+        "description": "Cancel planned work by id",
+        "operationId": "CancelWorkById",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "description": "Id of work",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Succesfull canceled"
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work with id no found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work/{workId}/move": {
+      "put": {
+        "tags": [
+          "work"
+        ],
+        "summary": "Move start time and duration for planned work",
+        "description": "Move start time and duration for planned work",
+        "operationId": "MoveWorkById",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "description": "Id of work",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Move start time and duration for planned work. durationMinutes is optional.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/moveWork"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Succesfull",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/work"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work with id no found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work/{workId}/prolongate": {
+      "put": {
+        "tags": [
+          "work"
+        ],
+        "summary": "Prolongate work duration started work",
+        "description": "Prolongate work duration started work",
+        "operationId": "ProlongateWorkById",
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "description": "Id of work",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Prolongate work duration started work",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/prolongateWork"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Succesfull",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/work"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work with id no found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/shedule": {
+      "get": {
+        "tags": [
+          "shedule"
+        ],
+        "summary": "Get shedule with works",
+        "description": "Get shedule with works",
+        "operationId": "GetShedule",
+        "parameters": [
+          {
+            "name": "fromDate",
+            "in": "query",
+            "description": "Starts from",
+            "requared": true,
+            "explode": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "description": "Starts to",
+            "requared": true,
+            "explode": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "zones",
+            "in": "query",
+            "description": "List of zones",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "statuses",
+            "in": "query",
+            "description": "Statuses of work to get",
+            "explode": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "planned",
+                  "cancelled",
+                  "in_progress"
+                ]
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Succesfull",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/work"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work with id no found"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "postWork": {
+        "type": "object",
+        "properties": {
+          "zone": {
+            "type": "string",
+            "example": "DS1"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "prolongateWork": {
+        "type": "object",
+        "properties": {
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2
+          }
+        }
+      },
+      "work": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "zone": {
+            "type": "string",
+            "example": "DS1"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "cancelled",
+              "in_progress"
+            ]
+          },
+          "workType": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "automatic"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "regular",
+              "critical"
+            ]
+          }
+        }
+      },
+      "workStatus": {
+        "type": "string",
+        "enum": [
+          "planned",
+          "cancelled",
+          "in_progress"
+        ]
+      },
+      "error": {
+        "type": "object",
+        "properties": {
+          "errorCode": {
+            "type": "integer",
+            "format": "uint32"
+          },
+          "message": {
+            "type": "string"
+          },
+          "alternative": {
+            "type": "array",
+            "items": {
+              "startDate": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "durationMinutes": {
+                "type": "integer",
+                "format": "int32",
+                "example": 2
+              }
+            }
+          }
+        }
+      },
+      "moveWork": {
+        "type": "object",
+        "required": [
+          "startDate"
+        ],
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2
+          }
+        }
+      }
+    }
+  }
+}
