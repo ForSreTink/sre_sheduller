@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,7 +9,7 @@ import (
 	"os"
 
 	api "workScheduler/internal/api/app"
-	inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
+	mongo "workScheduler/internal/repository/mongo_integrations"
 
 	middleware "github.com/deepmap/oapi-codegen/pkg/chi-middleware"
 
@@ -26,7 +27,12 @@ func main() {
 	}
 	swagger.Servers = nil
 
-	data := inmemoryrepository.NewInmemoryRepository()
+	ctx := context.Background()
+	data, err := mongo.NewMongoClient(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		os.Exit(1)
+	}
 	sheduller := api.NewApi(data)
 
 	r := mux.NewRouter()
@@ -37,7 +43,6 @@ func main() {
 		Handler: r,
 		Addr:    fmt.Sprintf("0.0.0.0:%d", *port),
 	}
-
 	// And we serve HTTP until the world ends.
 	log.Fatal(s.ListenAndServe())
 }

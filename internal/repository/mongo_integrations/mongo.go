@@ -23,7 +23,7 @@ type MongoClient struct {
 	worksCollection *mongo.Collection
 }
 
-func NewMongoClient() (ctx context.Context, c *MongoClient, err error) {
+func NewMongoClient(ctx context.Context) (c *MongoClient, err error) {
 	uri := os.Getenv("MONGO_URI")
 	if uri == "" {
 		err = fmt.Errorf("empty MONGO_URI for connection string")
