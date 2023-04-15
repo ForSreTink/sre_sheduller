@@ -37,6 +37,5 @@ require (
 
 require (
 	github.com/google/uuid v1.3.0
-	github.com/mattschofield/go-knapsack v0.0.0-20151002114940-aaf424030800
 	go.mongodb.org/mongo-driver v1.11.4
 )

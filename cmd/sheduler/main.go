@@ -8,7 +8,7 @@ import (
 	"os"
 
 	api "workScheduler/internal/api/app"
-	inmemoryrepository "workScheduler/internal/api/models/repository/inmemory_repository"
+	inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
 
 	middleware "github.com/deepmap/oapi-codegen/pkg/chi-middleware"
 

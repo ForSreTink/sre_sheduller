@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"workScheduler/internal/api/models"
-	"workScheduler/internal/api/models/repository"
+	"workScheduler/internal/repository"
 )
 
 type Api struct {
