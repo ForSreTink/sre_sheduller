@@ -10,6 +10,6 @@ type WorkItem struct {
 	StartDate       time.Time `bson:"startDate,omitempty" json:"startDate"`
 	Status          string    `bson:"status,omitempty" json:"status"`
 	WorkType        string    `bson:"workType,omitempty" json:"workType"`
-	Zone            string    `bson:"zone,omitempty" json:"zone"`
+	Zones           []string  `bson:"zones,omitempty" json:"zone"`
 	CompressionRate float64   `bson:"compressionRate,omitempty" json:"compressionRate"`
 }

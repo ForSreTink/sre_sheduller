@@ -23,13 +23,15 @@ func NewInmemoryRepository() *InMemoryRepository {
 	}
 }
 
-func inArray(arr []string, i string) bool {
+func inArray(arr []string, i []string) bool {
 	if len(arr) == 0 {
 		return true
 	}
 	for _, v := range arr {
-		if i == v {
-			return true
+		for _, v2 := range i {
+			if v == v2 {
+				return true
+			}
 		}
 	}
 	return false
@@ -54,7 +56,7 @@ func (inm *InMemoryRepository) List(ctx context.Context, from time.Time, to time
 	works := []*models.WorkItem{}
 
 	for _, work := range inm.Data {
-		if work.StartDate.Unix() >= from.Unix() && work.StartDate.Unix() < to.Unix() && inArray(zones, work.Zone) && inArray(statuses, work.Status) {
+		if work.StartDate.Unix() >= from.Unix() && work.StartDate.Unix() < to.Unix() && inArray(zones, work.Zones) && inArray(statuses, []string{work.Status}) {
 			works = append(works, work)
 		}
 	}

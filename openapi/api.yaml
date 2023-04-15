@@ -273,9 +273,14 @@ components:
       properties:
         id:
           type: string
-        zone:
-          type: string
-          example: DS1
+        zones:
+          in: query
+          description: List of zones
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
         startDate:
           type: string
           format: date-time

@@ -1,14 +1,24 @@
 package configuration
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
+
+type Configurator struct {
+	ConfigPath string
+	Data       *Config
+	Ctx        context.Context
+	Mu         *sync.Mutex
+	Started    bool
+}
 
 type Config struct {
 	WhiteList               []ZoneWindow         `yaml:"white_list"`
@@ -42,8 +52,36 @@ type WorkDurationSettings struct {
 	Manual    int32 `yaml:"manual"`
 }
 
-func ReadConfig(configFile string) (config Config, err error) {
-	file, err := os.ReadFile(configFile)
+func NewConfigurator(ctx context.Context, filepath string) *Configurator {
+	return &Configurator{
+		ConfigPath: filepath,
+		Data:       &Config{},
+		Ctx:        ctx,
+		Mu:         &sync.Mutex{},
+		Started:    false,
+	}
+}
+
+func (c *Configurator) Run() error {
+
+	return nil
+}
+
+func (c *Configurator) mainProcess() {
+	ticker := time.NewTicker(5 * time.Second)
+
+	for {
+		select {
+		case <-c.Ctx.Done():
+			return
+		case <-ticker.C:
+			conf, err := c.readConfig()
+		}
+	}
+}
+
+func (c *Configurator) readConfig() (config Config, err error) {
+	file, err := os.ReadFile(c.ConfigPath)
 	if err != nil {
 		return
 	}
@@ -65,6 +103,10 @@ func ReadConfig(configFile string) (config Config, err error) {
 	}
 
 	return
+}
+
+func (c *Configurator) validateConfig(conf *Config) error {
+
 }
 
 //todo validate config??
