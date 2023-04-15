@@ -7,7 +7,7 @@ import (
 
 type ReadRepository interface {
 	GetById(id string) (*models.WorkItem, error)
-	List(from time.Time, to time.Time, zones []string) *models.WorkItem
+	List(from time.Time, to time.Time, zones []string, statuses []string) *models.WorkItem
 }
 
 type WriteRepository interface {
