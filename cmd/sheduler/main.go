@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -9,7 +10,9 @@ import (
 
 	api "workScheduler/internal/api/app"
 	handlers "workScheduler/internal/handlers"
-	inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
+	mongo "workScheduler/internal/repository/mongo_integrations"
+
+	// inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
 
 	"github.com/go-openapi/runtime/middleware"
 	gorilla_handlers "github.com/gorilla/handlers"
@@ -20,14 +23,14 @@ func main() {
 	var port = flag.Int("port", 8080, "Port for test HTTP server")
 	flag.Parse()
 
-	// ctx := context.Background()
-	// data, err := mongo.NewMongoClient(ctx)
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-	// 	os.Exit(1)
-	// }
+	ctx := context.Background()
+	data, err := mongo.NewMongoClient(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
 
-	data := inmemoryrepository.NewInmemoryRepository()
+	// data := inmemoryrepository.NewInmemoryRepository()
 	sheduller := api.NewApi(data)
 
 	var sh http.Handler = middleware.SwaggerUI(middleware.SwaggerUIOpts{

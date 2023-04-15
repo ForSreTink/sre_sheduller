@@ -14,10 +14,22 @@ services:
       - db-data:/data/db
       - db-log:/var/log
     healthcheck:
-        test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/workScheduler --quiet
+        test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/workScheduler --quiet
         interval: 30s
         timeout: 10s
-        retries: 5  
+        retries: 5
+
+  sheduller:
+    build:
+      context: .
+      dockerfile: build/sheduler/Dockerfile
+    environment:
+      MONGO_URI: mongodb://root:example@mongo:27017/
+    depends_on:
+      mongo:
+        condition: service_healthy
+    links:
+      - mongo
 
   mongo_indexes:
     build:
@@ -30,7 +42,8 @@ services:
       MONGO_SCRIPTS_HOST: mongo
       MONGO_SCRIPTS_PORT: 27017
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     links:
       - mongo
 
@@ -44,7 +57,8 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: example
       ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     links:
       - mongo
 
