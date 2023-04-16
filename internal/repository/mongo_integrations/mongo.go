@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -77,7 +78,7 @@ func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *m
 	if !ok {
 		return
 	}
-	fmt.Printf("successfully inserted work with document id %v\n", id)
+	log.Printf("successfully inserted work with document id %v\n", id)
 	return
 }
 
@@ -88,7 +89,7 @@ func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result
 	if err != nil {
 		return
 	}
-	fmt.Printf("successfully updated %v work document with id %v\n", out.ModifiedCount, work.Id)
+	log.Printf("successfully updated %v work document with id %v\n", out.ModifiedCount, work.Id)
 	return
 }
 
@@ -102,7 +103,7 @@ func (m *MongoClient) List(ctx context.Context, from time.Time, to time.Time, zo
 
 	orderedFilter := bson.A{
 		bson.D{{Key: "startDate", Value: bson.D{{Key: "$gte", Value: from}}}},
-		bson.D{{Key: "startDate", Value: bson.D{{Key: "$lte", Value: from}}}},
+		bson.D{{Key: "startDate", Value: bson.D{{Key: "$lte", Value: to}}}},
 	}
 	if len(zones) > 0 {
 		orderedFilter = append(orderedFilter, bson.E{Key: "zone", Value: bson.M{"$in": zones}})
@@ -112,9 +113,9 @@ func (m *MongoClient) List(ctx context.Context, from time.Time, to time.Time, zo
 	}
 	filter := bson.D{{Key: "$and", Value: orderedFilter}}
 	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{"startDate", 1}})
+	findOptions.SetSort(bson.D{{Key: "startDate", Value: 1}})
 
-	fmt.Printf("searching for work documents with filer %+v\n", filter)
+	log.Printf("searching for work documents with filer %+v\n", filter)
 	cursor, err := m.worksCollection.Find(ctx, filter, findOptions)
 	if err != nil {
 		return
