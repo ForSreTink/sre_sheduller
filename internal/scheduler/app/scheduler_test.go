@@ -45,7 +45,7 @@ func TestScheduleWorkSuccees(t *testing.T) {
 			Zones:           []string{"zone1"},
 			StartDate:       testTime.Round(time.Duration(24) * time.Hour).Add(time.Duration(7) * time.Hour),
 			DurationMinutes: 30,
-			Id:              "testId2",
+			Id:              "",
 			Priority:        "critical",
 		}
 
@@ -64,3 +64,45 @@ func TestScheduleWorkSuccees(t *testing.T) {
 
 	})
 }
+
+func TestDublicateScheduleWorkError(t *testing.T) {
+
+	t.Run("error duplicate ScheduleWork", func(t *testing.T) {
+
+		testTime := time.Now()
+		expectedInDb := models.WorkItem{
+			Zones:           []string{"zone1"},
+			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
+			DurationMinutes: 50,
+			Id:              "testId",
+			Priority:        "regular",
+			WorkType:        "manual",
+			Deadline:        testTime.Add(time.Duration(480) * time.Hour),
+		}
+		testItem := expectedInDb
+		testItem.Id = ""
+		rep := RepositoryMock{
+			ListResult: []*models.WorkItem{&expectedInDb},
+		}
+		ctx := context.Background()
+		c := configuration.NewConfigurator(ctx, "../../../config.yml")
+		c.Run()
+
+		scheduler := NewScheduler(ctx, rep, c)
+		result, _, err := scheduler.ScheduleWork(&expectedInDb)
+		if err == nil {
+			t.Errorf("Expect return error but got result: %v", result)
+		}
+
+	})
+}
+
+// 	"zones": [
+// 	   "zone1"
+// 	],
+// 	"startDate": "2023-04-16T08:05:26.986Z",
+// 	"durationMinutes": 50,
+// 	"workType": "manual",
+// 	"priority": "regular",
+// 	"deadline": "2023-04-16T09:07:26.986Z"
+//

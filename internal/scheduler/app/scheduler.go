@@ -142,10 +142,11 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 		if !hasFreeWindow {
 			//	todo по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
 			changes, moveErr := moveZoneAvailabe(zoneScheduleByZone, *workItemInterval, move, cancelAuto, cancelManual)
-			if moveErr != nil {
+			if moveErr != nil || len(changes) == 0 {
 				err = moveErr
 				return
 			} else {
+				// todo validate move with checkZoneAvailabe
 				hasFreeWindow = true
 				schedule = append(schedule, changes...)
 			}
@@ -166,6 +167,9 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 			err = fmt.Errorf("unable to schedule work: should keep min available zones = %v", sch.Config.MinAvialableZones)
 			return
 		}
+	} else {
+		err = fmt.Errorf("unable to schedule work: interval alredy occupied")
+		return
 	}
 	return
 }
@@ -227,6 +231,9 @@ func moveZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span,
 				// }
 			}
 		}
+	}
+	if len(changes) == 0 {
+		err = fmt.Errorf("unable to cancel or move work")
 	}
 	return
 }
