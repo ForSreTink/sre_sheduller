@@ -72,7 +72,7 @@ func (inm *InMemoryRepository) Add(ctx context.Context, work *models.WorkItem) (
 		return nil, err
 	}
 
-	work.Id = uuid.String()
+	work.WorkId = uuid.String()
 	inm.Data[uuid.String()] = work
 
 	return work, nil
@@ -82,9 +82,9 @@ func (inm *InMemoryRepository) Update(ctx context.Context, work *models.WorkItem
 	inm.Mu.Lock()
 	defer inm.Mu.Unlock()
 
-	if _, ok := inm.Data[work.Id]; !ok {
-		return nil, repository.NewErrorNotFound(fmt.Sprintf("Work with id %s not found", work.Id))
+	if _, ok := inm.Data[work.WorkId]; !ok {
+		return nil, repository.NewErrorNotFound(fmt.Sprintf("Work with id %s not found", work.WorkId))
 	}
-	inm.Data[work.Id] = work
+	inm.Data[work.WorkId] = work
 	return work, nil
 }

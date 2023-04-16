@@ -255,7 +255,7 @@ func moveZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span,
 		if interv.Span.IsIntersection(checkInterval) {
 			if (cancelManual && interv.Work.WorkType == WorkTypeManual) || (cancelAuto && interv.Work.WorkType == WorkTypeAutomatic) {
 				if interv.Work.Status == StatusInProgress {
-					err = fmt.Errorf("unable to cancel in progress work %v", interv.Work.Id)
+					err = fmt.Errorf("unable to cancel in progress work %v", interv.Work.WorkId)
 					return
 				} else {
 					interv.Work.Status = StatusCancelled
