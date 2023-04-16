@@ -271,9 +271,22 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 		return
 	}
 
-	if work.Status == "in_progress" || work.Status == "canceled" {
+	if work.Status != "planned" {
 		a.writeBadRequestError(w, "Bad request", "Can't move work with status != planned")
 		return
+	}
+
+	w_b := &models.WorkItem{}
+	err = json.NewDecoder(r.Body).Decode(w_b)
+	if err != nil {
+		a.writeBadRequestError(w, "Bad request", err.Error())
+		return
+	}
+
+	work.StartDate = w_b.StartDate
+
+	if w_b.DurationMinutes != 0 {
+		work.DurationMinutes = w_b.DurationMinutes
 	}
 
 	if err := a.validateAddWork(work); err != nil {
@@ -321,6 +334,19 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 
 	if work.WorkType != "manual" {
 		a.writeBadRequestError(w, "Bad request", "Only manual work may be prolongate")
+		return
+	}
+
+	w_b := &models.WorkItem{}
+	err = json.NewDecoder(r.Body).Decode(w_b)
+	if err != nil {
+		a.writeBadRequestError(w, "Bad request", err.Error())
+		return
+	}
+
+	work.DurationMinutes = w_b.DurationMinutes
+	if err := a.validateAddWork(work); err != nil {
+		a.writeBadRequestError(w, "Bad request", err.Error())
 		return
 	}
 

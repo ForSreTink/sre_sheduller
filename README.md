@@ -9,8 +9,7 @@
 
 ## Запуск
 
-Запуск с помощью docker-compose из файла `docker-compose.yml`:
-```
-docker compose -f docker-compose.yml up
-```
-Поднимет mongodb и сервис
+make run-compose - соберет сервисы из docker-compose.yaml и запустит приложение
+
+localhost:8080/swagger - свагер
+localhost:8081 - монго-экспресс

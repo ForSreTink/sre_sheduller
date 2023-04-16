@@ -100,16 +100,15 @@ func (m *MongoClient) GetById(ctx context.Context, id string) (result *models.Wo
 }
 
 func (m *MongoClient) List(ctx context.Context, from time.Time, to time.Time, zones []string, statuses []string) (result []*models.WorkItem, err error) {
-
 	orderedFilter := bson.A{
 		bson.D{{Key: "startDate", Value: bson.D{{Key: "$gte", Value: from}}}},
 		bson.D{{Key: "startDate", Value: bson.D{{Key: "$lte", Value: to}}}},
 	}
 	if len(zones) > 0 {
-		orderedFilter = append(orderedFilter, bson.E{Key: "zone", Value: bson.M{"$in": zones}})
+		orderedFilter = append(orderedFilter, bson.D{{Key: "zones", Value: bson.D{{Key: "$in", Value: zones}}}})
 	}
 	if len(statuses) > 0 {
-		orderedFilter = append(orderedFilter, bson.E{Key: "status", Value: bson.M{"$in": statuses}})
+		orderedFilter = append(orderedFilter, bson.D{{Key: "status", Value: bson.D{{Key: "$in", Value: statuses}}}})
 	}
 	filter := bson.D{{Key: "$and", Value: orderedFilter}}
 	findOptions := options.Find()
