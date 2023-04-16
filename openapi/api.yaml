@@ -81,8 +81,12 @@ paths:
           schema:
             type: string
       responses:
-        '201':
-          description: Succesfull canceled
+        '200':
+          description: Succesfull
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/work'
         '400':
           description: Bad request
           content:

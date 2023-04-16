@@ -84,8 +84,11 @@ func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *m
 
 func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
 	filter := bson.D{{Key: "workId", Value: work.WorkId}}
+	update := bson.M{
+		"$set": work,
+	}
 	opts := options.Update().SetUpsert(true)
-	out, err := m.worksCollection.UpdateOne(ctx, filter, work, opts)
+	out, err := m.worksCollection.UpdateOne(ctx, filter, update, opts)
 	if err != nil {
 		return
 	}
