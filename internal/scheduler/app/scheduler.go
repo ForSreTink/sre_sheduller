@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"workScheduler/internal/configuration"
@@ -127,6 +128,7 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 		return
 	}
 
+	scheduleRyZone := make(map[string][]*models.WorkItem)
 	for _, z := range wi.Zones {
 		// проверить black и white листы
 		_, zoneErr := sch.checkZoneLists(z, wi)
@@ -146,9 +148,9 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 				err = moveErr
 				return
 			} else {
-				// todo validate move with checkZoneAvailabe
 				hasFreeWindow = true
-				schedule = append(schedule, changes...)
+				scheduleRyZone[z] = append(scheduleRyZone[z], wi)
+				scheduleRyZone[z] = append(scheduleRyZone[z], changes...)
 			}
 			return
 		}
@@ -157,12 +159,15 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 		//min_avialable_zones вполняется -> 201 планируем
 		available_count := 0
 		for z := range sch.Config.WhiteList {
-			if checkZoneAvailabe(zoneSchedule[z], *workItemInterval) {
+			if checkZoneAvailabe(merge(zoneSchedule[z], scheduleRyZone[z]), *workItemInterval) {
 				available_count++
 			}
 		}
 		if available_count > int(sch.Config.MinAvialableZones) {
-			schedule = append(schedule, wi)
+			for _, i := range scheduleRyZone {
+				schedule = append(schedule, i...)
+			}
+
 		} else {
 			err = fmt.Errorf("unable to schedule work: should keep min available zones = %v", sch.Config.MinAvialableZones)
 			return
@@ -172,6 +177,27 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 		return
 	}
 	return
+}
+
+func merge(source []*IntervalWork, new []*models.WorkItem) []*IntervalWork {
+	for _, n := range new {
+		found := false
+		for i, j := range source {
+			if j.Work.Id == n.Id {
+				found = true
+				source[i].Work = n
+			}
+		}
+		if !found {
+			span, _ := getWorkInterval(n)
+			iw := IntervalWork{
+				Work: n,
+				Span: span,
+			}
+			source = append(source, &iw)
+		}
+	}
+	return source
 }
 
 func (sch *Scheduler) getZoneSchedule(from time.Time, to time.Time, zones []string, statuses []string) (zoneSchedules map[string][]*IntervalWork, err error) {
@@ -226,14 +252,35 @@ func moveZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span,
 					break
 					// todo переносить или сжимать автоматические вместо отмены
 				}
-				// if move && interv.Work.WorkType == WorkTypeAutomatic {
-				// TODO move
-				// }
+			}
+			if move && interv.Work.WorkType == WorkTypeAutomatic {
+				changes, err = createMovement(zoneSchedule, checkInterval)
 			}
 		}
 	}
 	if len(changes) == 0 {
 		err = fmt.Errorf("unable to cancel or move work")
+	}
+	return
+}
+
+func createMovement(zoneSchedule []*IntervalWork, checkInterval interval.Span) (changes []*models.WorkItem, err error) {
+	sort.Slice(zoneSchedule, func(i, j int) bool {
+		return zoneSchedule[i].Work.StartDate.Before(zoneSchedule[j].Work.StartDate)
+	})
+	last_interval := checkInterval
+	for _, inter := range zoneSchedule {
+		if last_interval.Start().Before(inter.Span.Start()) && last_interval.End().After(inter.Span.Start()) {
+			inter.Work.StartDate = last_interval.End()
+			inter.Span, err = getWorkInterval(inter.Work)
+			if err != nil {
+				return
+			}
+			last_interval = *inter.Span
+			changes = append(changes, inter.Work)
+		} else {
+			break
+		}
 	}
 	return
 }
