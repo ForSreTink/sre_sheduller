@@ -70,7 +70,7 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	}
 
 	delta := work.Deadline.Sub(ts)
-	if delta.Hours() <= 0 || delta.Hours()/24 > 16 {
+	if delta.Hours() <= 0 || int32(delta.Hours()/24) > a.Config.Data.MaxDeadlineDays {
 		errStr += "Deadline can't be greater then now for 4 week; "
 	}
 	if inArray(work.Zones, a.Config.Data.BlackList) && work.Priority != "critical" {
@@ -84,14 +84,17 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	if delta <= 0 {
 		errStr += "Start Date can't be in past; "
 	}
-	if work.DurationMinutes < 5 && work.WorkType == "automatic" {
-		errStr += "Automatic work duration can't be lower then 5 minutes; "
+	if work.DurationMinutes < a.Scheduller.Config.MinWorkDurationMinutes.Automatic && work.WorkType == "automatic" {
+		errStr += fmt.Sprintf("Automatic work duration can't be lower then %d minutes; ", a.Scheduller.Config.MinWorkDurationMinutes.Automatic)
 	}
-	if work.DurationMinutes < 30 && work.WorkType == "manual" {
-		errStr += "Manual work duration can't be lower then 30 minutes; "
+	if work.DurationMinutes < a.Scheduller.Config.MinWorkDurationMinutes.Manual && work.WorkType == "manual" {
+		errStr += fmt.Sprintf("Manual work duration can't be lower then %d minutes; ", a.Scheduller.Config.MinWorkDurationMinutes.Manual)
 	}
-	if work.DurationMinutes > 360 && work.Priority != "critical" {
-		errStr += "Work max duration can't be greater then 360 minutes, excepted critical work; "
+	if work.DurationMinutes > a.Scheduller.Config.MaxWorkDurationMinutes.Manual && work.Priority != "critical" {
+		errStr += fmt.Sprintf("Manual work max duration can't be greater then %d minutes, excepted critical work; ", a.Scheduller.Config.MaxWorkDurationMinutes.Manual)
+	}
+	if work.DurationMinutes > a.Scheduller.Config.MaxWorkDurationMinutes.Automatic && work.Priority != "critical" {
+		errStr += fmt.Sprintf("Automatic work max duration can't be greater then %d minutes, excepted critical work; ", a.Scheduller.Config.MaxWorkDurationMinutes.Automatic)
 	}
 	if work.StartDate.Minute()%5 != 0 && work.WorkType == "manual" {
 		errStr += "Manual work started time must be multiple by 5 minutes; "
@@ -309,6 +312,11 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 
 	if work.Status != "in_progress" {
 		a.writeBadRequestError(w, "Bad request", "Can't prolongate work with status != in_progress")
+		return
+	}
+
+	if work.WorkType == "manual" {
+		a.writeBadRequestError(w, "Bad request", "Only manual work may be prolongate")
 		return
 	}
 
