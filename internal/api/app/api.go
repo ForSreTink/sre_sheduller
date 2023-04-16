@@ -253,6 +253,12 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 
 	work.Status = "cancelled"
 
+	work, err = a.RepoData.Update(r.Context(), work)
+	if err != nil {
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		return
+	}
+
 	work_b, err := json.Marshal(work)
 	if err != nil {
 		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
