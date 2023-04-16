@@ -14,11 +14,13 @@ import (
 )
 
 const (
-	PriorityCritical = "critical"
-	PriorityRegular  = "regular"
-	StatusInProgress = "in_progress"
-	StatusPlanned    = "planned"
-	StatusCancelled  = "cancelled"
+	PriorityCritical  = "critical"
+	PriorityRegular   = "regular"
+	WorkTypeAutomatic = "automatic"
+	WorkTypeManual    = "manual"
+	StatusInProgress  = "in_progress"
+	StatusPlanned     = "planned"
+	StatusCancelled   = "cancelled"
 )
 
 type Scheduler struct {
@@ -68,7 +70,9 @@ func (sch *Scheduler) MoveWork(wi *models.WorkItem) (schedule []*models.WorkItem
 			}
 		}
 	}
-	schedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi)
+	//Критичные работы помещать в расписание вне очереди, принудительно отменяя обычные ручные работы и сжимая или перенося работы обычные автоматические.
+	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
+	schedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
@@ -87,7 +91,9 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 	if err != nil {
 		return
 	}
-	schedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi)
+	//Критичные работы помещать в расписание вне очереди, принудительно отменяя обычные ручные работы и сжимая или перенося работы обычные автоматические.
+	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
+	schedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
@@ -95,7 +101,26 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 	return
 }
 
-func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork, wi *models.WorkItem) (schedule []*models.WorkItem, err error) {
+func (sch *Scheduler) ProlongateWorkById(wi *models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
+	errorIsUnexpected = true
+	statuses := []string{StatusPlanned, StatusInProgress}
+	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
+	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
+
+	// текущее расписание
+	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones, statuses)
+	if err != nil {
+		return
+	}
+	schedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi, true, true, false)
+	if zoneErr != nil {
+		errorIsUnexpected = false
+		err = zoneErr
+	}
+	return
+}
+
+func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork, wi *models.WorkItem, move bool, cancelAuto bool, cancelManual bool) (schedule []*models.WorkItem, err error) {
 	hasFreeWindow := false
 	workItemInterval, err := getWorkInterval(wi)
 	if err != nil {
@@ -109,13 +134,21 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 			err = zoneErr
 			return
 		}
-		// проверить, нет ли работ в это время, если нет ->
+		// проверить, нет ли работ в это время, если нет -> проверить min_avialable_zones
 		zoneScheduleByZone, ok := zoneSchedule[z]
 		if ok {
 			hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, *workItemInterval)
 		}
 		if !hasFreeWindow {
 			//	todo по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
+			changes, moveErr := moveZoneAvailabe(zoneScheduleByZone, *workItemInterval, move, cancelAuto, cancelManual)
+			if moveErr != nil {
+				err = moveErr
+				return
+			} else {
+				hasFreeWindow = true
+				schedule = append(schedule, changes...)
+			}
 			return
 		}
 	}
@@ -171,6 +204,28 @@ func checkZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span
 			available = false
 			//todo считать сдвиги по зонам
 			break
+		}
+	}
+	return
+}
+
+func moveZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span, move bool, cancelAuto bool, cancelManual bool) (changes []*models.WorkItem, err error) {
+	for _, interv := range zoneSchedule {
+		if interv.Span.IsIntersection(checkInterval) {
+			if (cancelManual && interv.Work.WorkType == WorkTypeManual) || (cancelAuto && interv.Work.WorkType == WorkTypeAutomatic) {
+				if interv.Work.Status == StatusInProgress {
+					err = fmt.Errorf("unable to cancel in progress work %v", interv.Work.Id)
+					return
+				} else {
+					interv.Work.Status = StatusCancelled
+					changes = append(changes, interv.Work)
+					break
+					// todo переносить или сжимать автоматические вместо отмены
+				}
+				// if move && interv.Work.WorkType == WorkTypeAutomatic {
+				// TODO move
+				// }
+			}
 		}
 	}
 	return
