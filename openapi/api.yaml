@@ -288,6 +288,8 @@ components:
       properties:
         id:
           type: string
+        workId:
+          type: string
         zones:
           type: array
           items:
