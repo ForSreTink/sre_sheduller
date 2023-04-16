@@ -96,18 +96,20 @@ func (c *Configurator) mainProcess() {
 
 func (c *Configurator) updateConfig() {
 	log.Println("Config processing...")
+	c.Mu.Lock()
+	defer c.Mu.Unlock()
 	conf, err := c.readConfig()
 	if err != nil && !c.Started {
 		log.Fatal(err)
 	} else if err != nil {
-		log.Println("WARNING: Given config is invalid, config update ignoring")
+		log.Printf("WARNING: Given config is invalid, config update ignoring: %s", err)
 		return
 	}
 	err = c.validateConfig(conf)
 	if err != nil && !c.Started {
 		log.Fatal(err)
 	} else if err != nil {
-		log.Printf("WARNING: Given valid is invalid, config update ignoring: %s", err)
+		log.Printf("WARNING: Given config is invalid, config update ignoring: %s", err)
 		return
 	} else {
 		c.Data = &conf
@@ -145,7 +147,7 @@ func (c *Configurator) validateConfig(conf Config) error {
 				errStr += "EndHour must be uint in range from 1 to 23; "
 			}
 			if interval.StartHour >= interval.EndHour {
-				errStr += "EndHour must greater when StartHour.; "
+				errStr += "EndHour must greater then StartHour.; "
 			}
 		}
 	}
@@ -160,7 +162,7 @@ func (c *Configurator) validateConfig(conf Config) error {
 	}
 
 	if conf.MinAvialableZones >= int32(len(conf.Zones)-2) {
-		errStr += "MinAvialableZones must be greater when zone count, min 2.; "
+		errStr += "MinAvialableZones must be greater then zone count, min 2.; "
 	}
 
 	for k, v := range conf.PausesMinutes {
@@ -202,6 +204,8 @@ func (c *Configurator) validateConfig(conf Config) error {
 			errStr += fmt.Sprintf("invalid time_compression_persents value in config: [%s]", conf.TimeCompressionPercents)
 		}
 	}
+
+	fmt.Println(conf.TimeCompressionRate)
 
 	if errStr != "" {
 		return errors.New(errStr)
