@@ -69,7 +69,7 @@ var _ repository.ReadWriteRepository = (*MongoClient)(nil)
 func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
 
 	result = work
-	result.Id = uuid.New().String()
+	result.WorkId = uuid.New().String()
 	out, err := m.worksCollection.InsertOne(ctx, work)
 	if err != nil {
 		return

@@ -167,7 +167,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/work'
+                $ref: '#/components/schemas/works'
         '400':
           description: Bad request
           content:
@@ -288,6 +288,8 @@ components:
       properties:
         id:
           type: string
+        workId:
+          type: string
         zones:
           type: array
           items:
@@ -318,6 +320,45 @@ components:
           enum:
             - regular
             - critical
+    works:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          workId:
+            type: string
+          zones:
+            type: array
+            items:
+              type: string
+          startDate:
+            type: string
+            format: date-time
+          durationMinutes:
+            type: integer
+            format: int32
+            example: 2
+          deadline:
+            type: string
+            format: date-time
+          status:
+            type: string
+            enum:
+              - planned
+              - cancelled
+              - in_progress
+          workType:
+            type: string
+            enum:
+              - manual
+              - automatic
+          priority:
+            type: string
+            enum:
+              - regular
+              - critical
     workStatus:
       type: string
       enum:

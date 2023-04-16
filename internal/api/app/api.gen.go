@@ -50,11 +50,30 @@ const (
 	WorkWorkTypeManual    WorkWorkType = "manual"
 )
 
+// Defines values for WorksPriority.
+const (
+	Critical WorksPriority = "critical"
+	Regular  WorksPriority = "regular"
+)
+
+// Defines values for WorksStatus.
+const (
+	WorksStatusCancelled  WorksStatus = "cancelled"
+	WorksStatusInProgress WorksStatus = "in_progress"
+	WorksStatusPlanned    WorksStatus = "planned"
+)
+
+// Defines values for WorksWorkType.
+const (
+	Automatic WorksWorkType = "automatic"
+	Manual    WorksWorkType = "manual"
+)
+
 // Defines values for GetscheduleParamsStatuses.
 const (
-	GetscheduleParamsStatusesCancelled  GetscheduleParamsStatuses = "cancelled"
-	GetscheduleParamsStatusesInProgress GetscheduleParamsStatuses = "in_progress"
-	GetscheduleParamsStatusesPlanned    GetscheduleParamsStatuses = "planned"
+	Cancelled  GetscheduleParamsStatuses = "cancelled"
+	InProgress GetscheduleParamsStatuses = "in_progress"
+	Planned    GetscheduleParamsStatuses = "planned"
 )
 
 // Error defines model for error.
@@ -104,6 +123,7 @@ type Work struct {
 	Priority        *WorkPriority `json:"priority,omitempty"`
 	StartDate       *time.Time    `json:"startDate,omitempty"`
 	Status          *WorkStatus   `json:"status,omitempty"`
+	WorkId          *string       `json:"workId,omitempty"`
 	WorkType        *WorkWorkType `json:"workType,omitempty"`
 	Zones           *[]string     `json:"zones,omitempty"`
 }
@@ -116,6 +136,28 @@ type WorkStatus string
 
 // WorkWorkType defines model for Work.WorkType.
 type WorkWorkType string
+
+// Works defines model for works.
+type Works = []struct {
+	Deadline        *time.Time     `json:"deadline,omitempty"`
+	DurationMinutes *int32         `json:"durationMinutes,omitempty"`
+	Id              *string        `json:"id,omitempty"`
+	Priority        *WorksPriority `json:"priority,omitempty"`
+	StartDate       *time.Time     `json:"startDate,omitempty"`
+	Status          *WorksStatus   `json:"status,omitempty"`
+	WorkId          *string        `json:"workId,omitempty"`
+	WorkType        *WorksWorkType `json:"workType,omitempty"`
+	Zones           *[]string      `json:"zones,omitempty"`
+}
+
+// WorksPriority defines model for Works.Priority.
+type WorksPriority string
+
+// WorksStatus defines model for Works.Status.
+type WorksStatus string
+
+// WorksWorkType defines model for Works.WorkType.
+type WorksWorkType string
 
 // GetscheduleParams defines parameters for Getschedule.
 type GetscheduleParams struct {
@@ -477,25 +519,25 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
