@@ -50,11 +50,30 @@ const (
 	WorkWorkTypeManual    WorkWorkType = "manual"
 )
 
+// Defines values for WorksPriority.
+const (
+	Critical WorksPriority = "critical"
+	Regular  WorksPriority = "regular"
+)
+
+// Defines values for WorksStatus.
+const (
+	WorksStatusCancelled  WorksStatus = "cancelled"
+	WorksStatusInProgress WorksStatus = "in_progress"
+	WorksStatusPlanned    WorksStatus = "planned"
+)
+
+// Defines values for WorksWorkType.
+const (
+	Automatic WorksWorkType = "automatic"
+	Manual    WorksWorkType = "manual"
+)
+
 // Defines values for GetscheduleParamsStatuses.
 const (
-	GetscheduleParamsStatusesCancelled  GetscheduleParamsStatuses = "cancelled"
-	GetscheduleParamsStatusesInProgress GetscheduleParamsStatuses = "in_progress"
-	GetscheduleParamsStatusesPlanned    GetscheduleParamsStatuses = "planned"
+	Cancelled  GetscheduleParamsStatuses = "cancelled"
+	InProgress GetscheduleParamsStatuses = "in_progress"
+	Planned    GetscheduleParamsStatuses = "planned"
 )
 
 // Error defines model for error.
@@ -117,6 +136,28 @@ type WorkStatus string
 
 // WorkWorkType defines model for Work.WorkType.
 type WorkWorkType string
+
+// Works defines model for works.
+type Works = []struct {
+	Deadline        *time.Time     `json:"deadline,omitempty"`
+	DurationMinutes *int32         `json:"durationMinutes,omitempty"`
+	Id              *string        `json:"id,omitempty"`
+	Priority        *WorksPriority `json:"priority,omitempty"`
+	StartDate       *time.Time     `json:"startDate,omitempty"`
+	Status          *WorksStatus   `json:"status,omitempty"`
+	WorkId          *string        `json:"workId,omitempty"`
+	WorkType        *WorksWorkType `json:"workType,omitempty"`
+	Zones           *[]string      `json:"zones,omitempty"`
+}
+
+// WorksPriority defines model for Works.Priority.
+type WorksPriority string
+
+// WorksStatus defines model for Works.Status.
+type WorksStatus string
+
+// WorksWorkType defines model for Works.WorkType.
+type WorksWorkType string
 
 // GetscheduleParams defines parameters for Getschedule.
 type GetscheduleParams struct {
@@ -478,25 +519,25 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xYQW/bOBP9K8R8H7AXVXLc7kW3NhssDDSLYhNgD0GwYMSxzYYiWXJk1xv4vy9I2ZJr",
-	"M4mdJmm6yCmONMMZzrz3huINVKa2RqMmD+UN+GqKNY8/0Tnjwg/rjEVHEuNjrgid5iRnGP6VhLXftRLI",
-	"hZI6moyNqzlBCYITviFZI2RAC4tQgicn9QSWGYjGcZJGn0rdULtI5yg1vR32TlITTtAFL0/c0W+cDgj0",
-	"j9Ht8l3qOyarB9w5voBl/8BcfcaKdi2ytljHRmByvRq955PUu9TatZnhX8ZdJ6q6WyP8ymurEMph9iT1",
-	"Wmbg8EsjHQooLzb8LxOZW+PplswfAw8H7tU6aZykRXTVTR3ydzhpFHeQQeUkyYqrjY30wR8Aq7lx1+fx",
-	"YR+t5rrhCjLgDZmak6yS0TpEdhu8AFEdQQaiGgaPlpUHYTYFLOuMMnrC6YnglYo5fzFwkCJZt+dFiSdO",
-	"jd+MZRXXGkWIxXWFSsXfUv9tnZk49D4ZOpR1lN7QYwDx4dIYHkk9Nm2XfeWkDW2DEs6n0jOPboaOCZyh",
-	"MhYFGxvHzv48YeR4dc2kZqPzXzw7l/rajMfszKgmuLPjxuaQgZIVah+3pnkd4r63vJoiG+YDyKBxCkqY",
-	"EtmyKObzec7j29y4SbFy9cXH0fHJH2cnb4b5IJ9SreKuJAUgQeAFC2wTjcLQ/xk636Z/lA/yo6NgbCxq",
-	"biWU8DYf5G8hA8tpGstVrH3DPxOk3Sr8jtQFYHNJUxb65SEu20I89DXYdWuFAI7XSOg8lBfbS54FGHo2",
-	"dqaGDPCrVXEOkWsw9AJK+NKgW0C2rlmwjLBttZ1HbW/Ne6XZbzjckguZ/TIh80R5fJSemBmzFtF75bI2",
-	"fYDYpspAjUcfUgj9ZWRYgMNeifiVczqX79ONrcQvQ+W9NYEYYfHhYBD+VEYT6ohebq2SVcRl8dmHzd1s",
-	"ZPV/h2Mo4X9Ff4osVkfIIip/1IOt2jRVhX7cqMi8d4N3uySJNIzkkIJpw8am0SJY//qI+bXn20SCIx1P",
-	"uGotVmvDDHxT19wt7qQx8YmPJ6U1ey+DZ9HNQeMTqnDskBMyjXO26msLG6kZn0mu+JXCiOUdnXgvRBzm",
-	"LYXQ0wcjFo9Wo+5AlyjTITn3R8gA++UO6o52S9LDhFUxkmjh8gwA+MAFW1XzRYHukIqvYRhx10OwuGlP",
-	"Dss7B9Q3q18tmBSp+RSA8WExEvfNp5FYyyCsBC/My17vVmeZbZRsqt+23r/q1nfoVrK79+GlaKdMlLAm",
-	"pWDx9T7IaS1fFHjukZ+Y8I/Tn58Uanch4l601aa9Xkpi7dTMkMWPLxbOg4xrwdbfh/GDYjPmDv5OV9cr",
-	"PxJ9jz+pu0ujRLcOqlfOtj61mfTMxKW4yveY5c+vxK+U3JOShxLnXpr2N0q3kvVTZ9JKQBcv5nEbST99",
-	"c1X136Lq1jVcopf71uyVij8tFfdt8TYFl8t/AwAA//9QWM8msxkAAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -319,19 +319,37 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 		return
 	}
 
-	if work.WorkType == "manual" {
+	if work.WorkType != "manual" {
 		a.writeBadRequestError(w, "Bad request", "Only manual work may be prolongate")
 		return
 	}
 
-	// TODO: код для определения возможности переноса
+	works, unexepted, err := a.Scheduller.ProlongateWorkById(work)
+	if err != nil {
+		if unexepted {
+			a.writeInternalError(w, "Unexpected error", err.Error(), []*models.WorkItem{})
+		}
+		a.writeInternalError(w, "Unable to shedule", err.Error(), works)
+		return
+	}
 
-	work_b, err := json.Marshal(work)
+	updatedWorks := []*models.WorkItem{}
+
+	for _, wks := range works {
+		wk, err := a.RepoData.Update(r.Context(), wks)
+		if err != nil {
+			a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+			return
+		}
+		updatedWorks = append(updatedWorks, wk)
+	}
+
+	works_b, err := json.Marshal(updatedWorks)
 	if err != nil {
 		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(work_b)
+	w.Write(works_b)
 }
