@@ -266,8 +266,13 @@ components:
         workType:
           type: string
           enum:
-            - automatic
             - manual
+            - automatic
+        priority:
+          type: string
+          enum:
+            - regular
+            - critical
         deadline:
           type: string
           format: date-time

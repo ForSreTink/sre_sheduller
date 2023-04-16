@@ -158,7 +158,7 @@ func (c *Configurator) validateConfig(conf Config) error {
 		}
 	}
 
-	if conf.MinAvialableZones >= int32(len(conf.WhiteList)-2) {
+	if conf.MinAvialableZones > int32(len(conf.WhiteList)-2) || conf.MinAvialableZones < 2 {
 		errStr += "MinAvialableZones must be greater then zone count, min 2; "
 	}
 
