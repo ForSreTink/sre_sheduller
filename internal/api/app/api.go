@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 	"workScheduler/internal/configuration"
@@ -56,7 +57,7 @@ func inWhiteList(whitelist map[string][]configuration.Window, zones []string) bo
 func (a *Api) validateAddWork(work *models.WorkItem) error {
 	ts := time.Now()
 	errStr := ""
-
+	fmt.Println(work)
 	if work.Priority != "regular" && work.Priority != "critical" {
 		errStr += "Unknown priority; "
 	}
@@ -65,18 +66,18 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	}
 
 	delta := work.Deadline.Sub(ts)
+	if delta.Hours() <= 0 || delta.Hours()/24 > 16 {
+		errStr += "Deadline can't be greater then now for 4 week; "
+	}
 	if inArray(work.Zones, a.Config.Data.BlackList) && work.Priority != "critical" {
 		errStr += "Can't shedule work for zone in blacklist , excepted critical work; "
 	}
 	if !inWhiteList(a.Config.Data.WhiteList, work.Zones) && work.Priority != "critical" {
 		errStr += "Can't shedule work for zone not in whitelist, excepted critical work; "
 	}
-	if delta.Hours()/24 > 4 {
-		errStr += "Deadline can't be greater then now for 4 week; "
-	}
 
 	delta = work.StartDate.Sub(ts)
-	if delta > 0 {
+	if delta <= 0 {
 		errStr += "Start Date can't be in past; "
 	}
 	if work.DurationMinutes < 5 && work.WorkType == "automatic" {
@@ -88,10 +89,10 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	if work.DurationMinutes > 360 && work.Priority != "critical" {
 		errStr += "Work max duration can't be greater then 360 minutes, excepted critical work; "
 	}
-	if work.StartDate.Minute()/5 != 0 && work.WorkType == "manual" {
+	if work.StartDate.Minute()%5 != 0 && work.WorkType == "manual" {
 		errStr += "Manual work started time must be multiple by 5 minutes; "
 	}
-	if work.StartDate.Minute()/1 != 0 && work.WorkType == "automatic" {
+	if work.StartDate.Minute()%1 != 0 && work.WorkType == "automatic" {
 		errStr += "Automatic work started time must be multiple by 1 minutes; "
 	}
 
