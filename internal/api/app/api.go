@@ -24,9 +24,9 @@ func NewApi(repo repository.ReadWriteRepository, scheduler *app.Scheduler, confi
 }
 
 type ErrorStruct struct {
-	Alternative []models.WorkItem `json:"alternative,omitempty"`
-	ErrorCode   string            `json:"errorCode,omitempty"`
-	Message     string            `json:"message,omitempty"`
+	Alternative []*models.WorkItem `json:"alternative,omitempty"`
+	ErrorCode   string             `json:"errorCode,omitempty"`
+	Message     string             `json:"message,omitempty"`
 }
 
 func (a *Api) writeBadRequestError(w http.ResponseWriter, code string, message string) {
@@ -34,7 +34,7 @@ func (a *Api) writeBadRequestError(w http.ResponseWriter, code string, message s
 	err := ErrorStruct{
 		Message:     message,
 		ErrorCode:   code,
-		Alternative: []models.WorkItem{},
+		Alternative: []*models.WorkItem{},
 	}
 	errBytes, e := json.Marshal(err)
 	if e != nil {
@@ -44,7 +44,7 @@ func (a *Api) writeBadRequestError(w http.ResponseWriter, code string, message s
 	}
 }
 
-func (a *Api) writeInternalError(w http.ResponseWriter, code string, message string, alternative []models.WorkItem) {
+func (a *Api) writeInternalError(w http.ResponseWriter, code string, message string, alternative []*models.WorkItem) {
 	w.WriteHeader(http.StatusInternalServerError)
 	err := ErrorStruct{
 		Message:     message,
@@ -77,20 +77,20 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 	works, unexepted, err := a.Scheduller.ScheduleWork(work)
 	if err != nil {
 		if unexepted {
-			a.writeInternalError(w, "Unexpected error", err.Error(), []models.WorkItem{})
+			a.writeInternalError(w, "Unexpected error", err.Error(), []*models.WorkItem{})
 		}
-		a.writeInternalError(w, "Unable to shedule", err.Error(), *works)
+		a.writeInternalError(w, "Unable to shedule", err.Error(), works)
 		return
 	}
 
 	work, err = a.RepoData.Add(r.Context(), work)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 	work_b, err := json.Marshal(work)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
@@ -103,12 +103,12 @@ func (a *Api) GetWorkById(w http.ResponseWriter, r *http.Request, workId string)
 
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 	work_b, err := json.Marshal(work)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
@@ -121,7 +121,7 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
@@ -129,7 +129,7 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 
 	work_b, err := json.Marshal(work)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
@@ -141,7 +141,7 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 	defer r.Body.Close()
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
@@ -149,7 +149,7 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 
 	work_b, err := json.Marshal(work)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
@@ -161,7 +161,7 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 	defer r.Body.Close()
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
@@ -169,7 +169,7 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 
 	work_b, err := json.Marshal(work)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []models.WorkItem{})
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
 		return
 	}
 
