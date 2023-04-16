@@ -19,6 +19,7 @@ FROM scratch
 WORKDIR /app
 
 COPY --from=build /app/openapi/api.yaml /app/openapi/api.yaml
+COPY --from=build /app/config.yml /app/config.yml
 COPY --from=build /scheduler /app/scheduler
 
 EXPOSE 8000
