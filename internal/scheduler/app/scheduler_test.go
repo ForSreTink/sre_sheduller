@@ -31,7 +31,7 @@ func (r RepositoryMock) List(ctx context.Context, from time.Time, to time.Time, 
 
 func TestScheduleWorkSuccees(t *testing.T) {
 
-	t.Run("succees ScheduleWork", func(t *testing.T) {
+	t.Run("succees schedule work", func(t *testing.T) {
 
 		testTime := time.Now()
 		expectedInDb := models.WorkItem{
@@ -67,7 +67,7 @@ func TestScheduleWorkSuccees(t *testing.T) {
 
 func TestDublicateScheduleWorkError(t *testing.T) {
 
-	t.Run("error duplicate ScheduleWork", func(t *testing.T) {
+	t.Run("error duplicate schedule work", func(t *testing.T) {
 
 		testTime := time.Now()
 		expectedInDb := models.WorkItem{
@@ -89,7 +89,7 @@ func TestDublicateScheduleWorkError(t *testing.T) {
 		c.Run()
 
 		scheduler := NewScheduler(ctx, rep, c)
-		result, _, err := scheduler.ScheduleWork(&expectedInDb)
+		result, _, err := scheduler.ScheduleWork(&testItem)
 		if err == nil {
 			t.Errorf("Expect return error but got result: %v", result)
 		}
@@ -97,12 +97,41 @@ func TestDublicateScheduleWorkError(t *testing.T) {
 	})
 }
 
-// 	"zones": [
-// 	   "zone1"
-// 	],
-// 	"startDate": "2023-04-16T08:05:26.986Z",
-// 	"durationMinutes": 50,
-// 	"workType": "manual",
-// 	"priority": "regular",
-// 	"deadline": "2023-04-16T09:07:26.986Z"
-//
+func TestProlongateWorkSuccees(t *testing.T) {
+
+	t.Run("succees prolongate work", func(t *testing.T) {
+
+		testTime := time.Now()
+		expectedInDb := models.WorkItem{
+			Zones:           []string{"zone1"},
+			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
+			DurationMinutes: 30,
+			Id:              "testId",
+			Priority:        "regular",
+			WorkType:        "manual",
+			Deadline:        testTime.Add(time.Duration(480) * time.Hour),
+			Status:          "in_progress",
+		}
+		testItem := expectedInDb
+		testItem.DurationMinutes = 120
+		rep := RepositoryMock{
+			ListResult: []*models.WorkItem{&expectedInDb},
+		}
+		ctx := context.Background()
+		c := configuration.NewConfigurator(ctx, "../../../config.yml")
+		c.Run()
+
+		scheduler := NewScheduler(ctx, rep, c)
+		result, _, err := scheduler.ProlongateWorkById(&testItem)
+		if err != nil {
+			t.Errorf("Expect return error but got result: %v", err)
+		}
+		if len(result) == 0 {
+			t.Errorf("Expect non-zero works count in result: %v", err)
+		}
+		if result[0].DurationMinutes != testItem.DurationMinutes {
+			t.Errorf("Unexpected work DurationMinutes got: %v, want %v", result[0].DurationMinutes, testItem.DurationMinutes)
+		}
+
+	})
+}

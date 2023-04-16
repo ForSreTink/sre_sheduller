@@ -113,11 +113,13 @@ func (sch *Scheduler) ProlongateWorkById(wi *models.WorkItem) (schedule []*model
 	if err != nil {
 		return
 	}
-	schedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi, true, true, false)
+	newSchedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi, true, true, false)
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
 	}
+	schedule = append(schedule, wi)
+	schedule = append(schedule, newSchedule...)
 	return
 }
 
@@ -136,6 +138,15 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 			err = zoneErr
 			return
 		}
+		// если пришло изменение работ, то надо удалить ранее сущестовавший айтем из списка сравнения
+		tmp := zoneSchedule[z]
+		for i, s := range zoneSchedule[z] {
+			if s.Work.Id == wi.Id {
+				tmp[i] = tmp[len(tmp)-1]
+				tmp = tmp[:len(tmp)-1]
+			}
+		}
+		zoneSchedule[z] = tmp
 		// проверить, нет ли работ в это время, если нет -> проверить min_avialable_zones
 		zoneScheduleByZone, ok := zoneSchedule[z]
 		if ok {
