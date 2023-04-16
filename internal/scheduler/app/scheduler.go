@@ -18,8 +18,8 @@ const (
 )
 
 type Scheduler struct {
-	Config     *configuration.Configurator
-	Repository repository.ReadWriteRepository
+	Config     *configuration.Config
+	Repository repository.ReadRepository
 	ctx        context.Context
 }
 
@@ -37,32 +37,37 @@ func getWorkInterval(wi *models.WorkItem) (span *interval.Span, err error) {
 func NewScheduler(ctx context.Context, repository repository.ReadWriteRepository, config *configuration.Configurator) (scheduler *Scheduler) {
 	scheduler = &Scheduler{
 		Repository: repository,
-		Config:     config,
+		Config:     config.Data,
 		ctx:        ctx,
 	}
 	return
 }
 
-func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule *[]models.WorkItem, errorIsUnexpected bool, err error) {
+func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
 	errorIsUnexpected = true
-	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.Data.MaxWorkDurationMinutes.Automatic, sch.Config.Data.MaxWorkDurationMinutes.Manual)))
-	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.Data.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
+	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
+	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
-	// проверяем, если зона в блеклисте && работы != критичные -> 500 возвращаем полную невозможность
+	// текущее расписание
+	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones)
+	if err != nil {
+		return
+	}
+	workItemInterval, err := getWorkInterval(wi)
+	if err != nil {
+		return
+	}
+	hasFreeWindow := false
+
 	for _, z := range wi.Zones {
 		// проверяем, если зона в блеклисте && работы != критичные -> 500 возвращаем полную невозможность
-		if slices.Contains(sch.Config.Data.BlackList, z) && wi.Priority != string(Critical) {
+		if slices.Contains(sch.Config.BlackList, z) && wi.Priority != string(Critical) {
 			errorIsUnexpected = false
-			err = fmt.Errorf("Zone %v is in black list, unable to shedule work with non-critical priority", z)
+			err = fmt.Errorf("zone %v is in black list, unable to Schedule work with non-critical priority", z)
 			return
 		}
 		// проверяем, если зона в вайт листе && работы не в окне -> 500 возвращаем невозможность c вариантами сдвига
-		// workInt, intErr := getWorkInterval(wi)
-		// if intErr != nil {
-		// 	err = intErr
-		// 	return
-		// }
-		windows, ok := sch.Config.Data.WhiteList[z]
+		windows, ok := sch.Config.WhiteList[z]
 		if ok {
 			workIntervals := []configuration.Window{}
 			endDate := wi.StartDate.Add(time.Duration(wi.DurationMinutes) * time.Minute)
@@ -70,7 +75,7 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule *[]models.Work
 				for _, window := range windows {
 					if window.EndHour-window.StartHour < 24 {
 						errorIsUnexpected = false
-						err = fmt.Errorf("Work duration %v is longer than zone white-list windows", wi.DurationMinutes)
+						err = fmt.Errorf("work duration %v is longer than zone white-list windows", wi.DurationMinutes)
 						return
 					}
 				}
@@ -112,54 +117,83 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule *[]models.Work
 				}
 				if !isInWindow {
 					errorIsUnexpected = false
-					err = fmt.Errorf("Zone %v is in white list, but work time is not in zone white-list window", z)
+					err = fmt.Errorf("zone %v is in white list, but work time is not in zone white-list window", z)
 					//todo - варианты сдвига
 					return
 				}
 			}
 		}
-	}
 
-	// текущее расписание
-	_, err = sch.getZoneSchedule(from, to, wi.Zones)
-	if err != nil {
-		return
+		// проверить, нет ли работ в это время, если нет ->
+		zoneScheduleByZone, ok := zoneSchedule[z]
+		if ok {
+			hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, *workItemInterval)
+		}
+		if !hasFreeWindow {
+			//	по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days,
+			//  с учетом min_avialable_zones;
+			return
+		}
 	}
-	// проверить, нет ли работ в это время, если нет ->
-	//			min_avialable_zones вполняется -> 201 планируем
-	//			min_avialable_zones не вполняется ->
-	//					по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
+	if hasFreeWindow {
+		//min_avialable_zones вполняется -> 201 планируем
+		available_count := 0
+		for z := range sch.Config.WhiteList {
+			if checkZoneAvailabe(zoneSchedule[z], *workItemInterval) {
+				available_count++
+			}
+		}
+		if available_count > int(sch.Config.MinAvialableZones) {
+			schedule = append(schedule, wi)
+		} else {
+			errorIsUnexpected = false
+			err = fmt.Errorf("unable to schedule work: should keep min available zones = %v", sch.Config.MinAvialableZones)
+			return
+		}
 
+	}
 	return
 }
 
-func (sch *Scheduler) getZoneSchedule(from time.Time, to time.Time, zones []string) (zoneShedules map[string][]*IntervalWork, err error) {
+func (sch *Scheduler) getZoneSchedule(from time.Time, to time.Time, zones []string) (zoneSchedules map[string][]*IntervalWork, err error) {
 	works, err := sch.Repository.List(sch.ctx, from, to, zones, []string{})
 	if err != nil {
 		return
 	}
-	zoneShedules = make(map[string][]*IntervalWork)
+	zoneSchedules = make(map[string][]*IntervalWork)
 	for _, w := range works {
+		interval, intErr := getWorkInterval(w)
+		if intErr != nil {
+			err = intErr
+			return
+		}
+		iw := IntervalWork{
+			Span: interval,
+			Work: w,
+		}
 		for _, z := range w.Zones {
-			interval, intErr := getWorkInterval(w)
-			if intErr != nil {
-				err = intErr
-				return
-			}
-			iw := IntervalWork{
-				Span: interval,
-				Work: w,
-			}
-			if value, ok := zoneShedules[z]; !ok {
-				zoneShedules[z] = []*IntervalWork{&iw}
+			if value, ok := zoneSchedules[z]; !ok {
+				zoneSchedules[z] = []*IntervalWork{&iw}
 			} else {
-				zoneShedules[z] = append(value, &iw)
+				zoneSchedules[z] = append(value, &iw)
 			}
 		}
 	}
 	return
-
 }
+
+func checkZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span) (available bool) {
+	available = true
+	for _, interv := range zoneSchedule {
+		if interv.Span.IsIntersection(checkInterval) {
+			available = false
+			//todo считать сдвиги по зонам
+			break
+		}
+	}
+	return
+}
+
 func Max(x int32, y int32) int32 {
 	if x > y {
 		return x
