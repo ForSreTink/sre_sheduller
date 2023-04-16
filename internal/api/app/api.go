@@ -262,6 +262,7 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 	work_b, err := json.Marshal(work)
 	if err != nil {
 		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		fmt.Println("AAAAAAAAAA")
 		return
 	}
 
