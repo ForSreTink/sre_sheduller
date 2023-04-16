@@ -38,7 +38,7 @@ func getWorkInterval(wi *models.WorkItem) (span *interval.Span, err error) {
 	return
 }
 
-func NewScheduler(ctx context.Context, repository repository.ReadWriteRepository, config *configuration.Configurator) (scheduler *Scheduler) {
+func NewScheduler(ctx context.Context, repository repository.ReadRepository, config *configuration.Configurator) (scheduler *Scheduler) {
 	scheduler = &Scheduler{
 		Repository: repository,
 		Config:     config.Data,
@@ -115,8 +115,7 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 			hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, *workItemInterval)
 		}
 		if !hasFreeWindow {
-			//	по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days,
-			//  с учетом min_avialable_zones;
+			//	todo по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
 			return
 		}
 	}
@@ -196,15 +195,17 @@ func (sch *Scheduler) checkZoneLists(zone string, wi *models.WorkItem) (availavl
 				}
 			}
 		}
-		if endDate.Day() > wi.StartDate.Day() {
-			workIntervals = append(workIntervals, configuration.Window{StartHour: uint32(wi.StartDate.Hour()), EndHour: 24})
-		}
+
 		endHour := endDate.Hour()
 		if endDate.Minute() != 0 {
 			endHour++
 		}
-		if endHour != 0 {
+		if endDate.Day() > wi.StartDate.Day() {
+			workIntervals = append(workIntervals, configuration.Window{StartHour: uint32(wi.StartDate.Hour()), EndHour: 24})
 			workIntervals = append(workIntervals, configuration.Window{StartHour: 0, EndHour: uint32(endHour)})
+		}
+		if endHour != 0 {
+			workIntervals = append(workIntervals, configuration.Window{StartHour: uint32(wi.StartDate.Hour()), EndHour: uint32(endHour)})
 		}
 
 		for _, workInterval := range workIntervals {
