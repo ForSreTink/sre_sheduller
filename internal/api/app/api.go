@@ -65,6 +65,10 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 		errStr += "Unknown worktype; "
 	}
 
+	if work.WorkType != "manual" && work.Priority == "critical" {
+		errStr += "Only manual works may has cretical priority; "
+	}
+
 	delta := work.Deadline.Sub(ts)
 	if delta.Hours() <= 0 || delta.Hours()/24 > 16 {
 		errStr += "Deadline can't be greater then now for 4 week; "
