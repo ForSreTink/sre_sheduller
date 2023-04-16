@@ -151,6 +151,11 @@ func (a *Api) Getschedule(w http.ResponseWriter, r *http.Request, params Getsche
 		return
 	}
 
+	if params.FromDate.Unix() >= params.ToDate.Unix() {
+		a.writeBadRequestError(w, "Bad request", "FromDate must be before StartDate")
+		return
+	}
+
 	if params.Statuses != nil {
 		for _, s := range *params.Statuses {
 			statuses = append(statuses, string(s))
@@ -203,6 +208,7 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	work.Status = "planned"
 	work, err = a.RepoData.Add(r.Context(), work)
 	if err != nil {
 		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
