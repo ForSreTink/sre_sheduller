@@ -34,7 +34,6 @@ type Config struct {
 	MaxDeadlineDays         int32                `yaml:"max_deadline_days"`
 	TimeCompressionPercents string               `yaml:"time_compression_percents"`
 	TimeCompressionRate     float32
-	Zones                   map[string]time.Time
 }
 
 type Window struct {
@@ -136,9 +135,9 @@ func (c *Configurator) readConfig() (config Config, err error) {
 func (c *Configurator) validateConfig(conf Config) error {
 	errStr := ""
 	ts := time.Now()
-	conf.Zones = make(map[string]time.Time)
+	zones := make(map[string]time.Time)
 	for name, zone := range conf.WhiteList {
-		conf.Zones[name] = ts
+		zones[name] = ts
 		for _, interval := range zone {
 			if interval.StartHour >= 24 {
 				errStr += "start_hour must be uint in range from 0 to 23; "
@@ -152,21 +151,19 @@ func (c *Configurator) validateConfig(conf Config) error {
 		}
 	}
 	for _, name := range conf.BlackList {
-		conf.Zones[name] = ts
-	}
-
-	for k, v := range conf.Zones {
-		if v != ts {
-			delete(conf.Zones, k)
+		if _, ok := zones[name]; ok {
+			errStr += "Zone from black list in white list; "
+		} else {
+			zones[name] = ts
 		}
 	}
 
-	if conf.MinAvialableZones >= int32(len(conf.Zones)-2) {
-		errStr += "MinAvialableZones must be greater then zone count, min 2.; "
+	if conf.MinAvialableZones >= int32(len(conf.WhiteList)-2) {
+		errStr += "MinAvialableZones must be greater then zone count, min 2; "
 	}
 
 	for k, v := range conf.PausesMinutes {
-		if _, ok := conf.Zones[k]; !ok {
+		if _, ok := zones[k]; !ok {
 			errStr += fmt.Sprintf("%s zone in pauses not found in zone (black/white list); ", k)
 		}
 		if v < 0 || v > 60 {

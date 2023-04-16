@@ -284,10 +284,9 @@ components:
         id:
           type: string
         zones:
-          schema:
-            type: array
-            items:
-              type: string
+          type: array
+          items:
+            type: string
         startDate:
           type: string
           format: date-time
@@ -324,20 +323,27 @@ components:
       type: object
       properties:
         errorCode: 
-          type: integer
-          format: uint32
+          type: string
         message:
           type: string
         alternative:
           type: array
           items:
-            startDate:
-              type: string
-              format: date-time
-            durationMinutes:
-              type: integer
-              format: int32
-              example: 2
+            type: object
+            properties:
+              zones:
+                type: array
+                items:
+                  type: string
+              startDate:
+                type: string
+                format: date-time
+              durationMinutes:
+                type: integer
+                format: int32
+              deadline:
+                type: string
+                format: date-time
     moveWork:
       type: object
       required: [startDate]

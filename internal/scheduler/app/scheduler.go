@@ -18,7 +18,7 @@ const (
 )
 
 type Scheduler struct {
-	Config     *configuration.Config
+	Config     *configuration.Configurator
 	Repository repository.ReadWriteRepository
 	ctx        context.Context
 }
@@ -34,7 +34,7 @@ func getWorkInterval(wi *models.WorkItem) (span *interval.Span, err error) {
 	return
 }
 
-func NewScheduler(ctx context.Context, repository repository.ReadWriteRepository, config *configuration.Config) (scheduler *Scheduler) {
+func NewScheduler(ctx context.Context, repository repository.ReadWriteRepository, config *configuration.Configurator) (scheduler *Scheduler) {
 	scheduler = &Scheduler{
 		Repository: repository,
 		Config:     config,
@@ -45,13 +45,13 @@ func NewScheduler(ctx context.Context, repository repository.ReadWriteRepository
 
 func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule *[]models.WorkItem, errorIsUnexpected bool, err error) {
 	errorIsUnexpected = true
-	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
-	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
+	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.Data.MaxWorkDurationMinutes.Automatic, sch.Config.Data.MaxWorkDurationMinutes.Manual)))
+	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.Data.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
 	// проверяем, если зона в блеклисте && работы != критичные -> 500 возвращаем полную невозможность
 	for _, z := range wi.Zones {
 		// проверяем, если зона в блеклисте && работы != критичные -> 500 возвращаем полную невозможность
-		if slices.Contains(sch.Config.BlackList, z) && wi.Priority != string(Critical) {
+		if slices.Contains(sch.Config.Data.BlackList, z) && wi.Priority != string(Critical) {
 			errorIsUnexpected = false
 			err = fmt.Errorf("Zone %v is in black list, unable to shedule work with non-critical priority", z)
 			return
@@ -62,7 +62,7 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule *[]models.Work
 		// 	err = intErr
 		// 	return
 		// }
-		windows, ok := sch.Config.WhiteList[z]
+		windows, ok := sch.Config.Data.WhiteList[z]
 		if ok {
 			workIntervals := []configuration.Window{}
 			endDate := wi.StartDate.Add(time.Duration(wi.DurationMinutes) * time.Minute)

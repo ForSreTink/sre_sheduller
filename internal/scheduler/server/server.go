@@ -12,6 +12,7 @@ import (
 	api "workScheduler/internal/api/app"
 	"workScheduler/internal/configuration"
 	handlers "workScheduler/internal/handlers"
+	"workScheduler/internal/scheduler/app"
 
 	mongo "workScheduler/internal/repository/mongo_integrations"
 
@@ -49,7 +50,8 @@ func (s *Server) Run() error {
 	}
 
 	// data := inmemoryrepository.NewInmemoryRepository()
-	Server := api.NewApi(data)
+	scheduler := app.NewScheduler(s.Ctx, data, s.Config)
+	Server := api.NewApi(data, scheduler, s.Config)
 
 	var sh http.Handler = middleware.SwaggerUI(middleware.SwaggerUIOpts{
 		SpecURL: "./static/api.yaml",
