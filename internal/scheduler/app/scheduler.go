@@ -115,8 +115,7 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 			hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, *workItemInterval)
 		}
 		if !hasFreeWindow {
-			//	по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days,
-			//  с учетом min_avialable_zones;
+			//	todo по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
 			return
 		}
 	}

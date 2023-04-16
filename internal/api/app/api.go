@@ -281,8 +281,6 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 		return
 	}
 
-	// TODO: код для определения возможности переноса
-
 	work, err = a.RepoData.Update(r.Context(), work)
 	if err != nil {
 		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
