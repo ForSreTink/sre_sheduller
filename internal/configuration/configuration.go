@@ -205,8 +205,6 @@ func (c *Configurator) validateConfig(conf Config) error {
 		}
 	}
 
-	fmt.Println(conf.TimeCompressionRate)
-
 	if errStr != "" {
 		return errors.New(errStr)
 	} else {

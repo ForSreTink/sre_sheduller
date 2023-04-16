@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"workScheduler/internal/scheduler/app"
+	"workScheduler/internal/scheduler/server"
 )
 
 // TODO: Отслеживать сигналы, тушить все и на монге делать коннекшен клоус + кенсел контекста
@@ -17,7 +17,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := app.NewScheduler(ctx, "./config.yml")
+	s := server.NewServer(ctx, "./config.yml")
 	s.Run()
 	log.Println("Application started!")
 
