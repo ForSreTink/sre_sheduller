@@ -13,11 +13,13 @@ import (
 // Json теги для work структуры
 
 func main() {
+	log.Println("Starting application...")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s := app.NewScheduler(ctx)
+	s := app.NewScheduler(ctx, "./config.yml")
 	s.Run()
+	log.Println("Application started!")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

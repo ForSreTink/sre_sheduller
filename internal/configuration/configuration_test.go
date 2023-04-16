@@ -11,7 +11,7 @@ const (
 func TestConfigSuccees(t *testing.T) {
 
 	t.Run("succees read config", func(t *testing.T) {
-		config, err := ReadConfig(configFile)
+		config, err := readConfig(configFile)
 		if err != nil {
 			t.Errorf("unable to read config file %s: %v", configFile, err)
 		}

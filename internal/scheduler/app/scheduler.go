@@ -10,10 +10,12 @@ import (
 	"os"
 
 	api "workScheduler/internal/api/app"
+	"workScheduler/internal/configuration"
 	handlers "workScheduler/internal/handlers"
-	mongo "workScheduler/internal/repository/mongo_integrations"
 
-	// inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
+	// mongo "workScheduler/internal/repository/mongo_integrations"
+
+	inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
 
 	"github.com/go-openapi/runtime/middleware"
 	gorilla_handlers "github.com/gorilla/handlers"
@@ -23,24 +25,30 @@ import (
 type Scheduler struct {
 	Ctx    context.Context
 	Server *http.Server
+	Config *configuration.Configurator
 }
 
-func NewScheduler(ctx context.Context) *Scheduler {
+func NewScheduler(ctx context.Context, config string) *Scheduler {
+	c := configuration.NewConfigurator(ctx, config)
+	c.Run()
 	return &Scheduler{
-		Ctx: ctx,
+		Ctx:    ctx,
+		Config: c,
 	}
 }
 
 func (s *Scheduler) Run() error {
+	var err error
+	log.Println("Start web server...")
 	var port = flag.Int("port", 8080, "Port for test HTTP server")
 	flag.Parse()
 
-	data, err := mongo.NewMongoClient(s.Ctx)
-	if err != nil {
-		return err
-	}
+	// data, err := mongo.NewMongoClient(s.Ctx)
+	// if err != nil {
+	// 	return err
+	// }
 
-	// data := inmemoryrepository.NewInmemoryRepository()
+	data := inmemoryrepository.NewInmemoryRepository()
 	scheduler := api.NewApi(data)
 
 	var sh http.Handler = middleware.SwaggerUI(middleware.SwaggerUIOpts{
@@ -68,7 +76,9 @@ func (s *Scheduler) Run() error {
 			log.Fatal(err)
 		}
 	}()
+	log.Println("Web server started!")
 	return nil
+
 }
 
 func (s *Scheduler) Stop() {
