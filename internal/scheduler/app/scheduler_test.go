@@ -38,14 +38,14 @@ func TestScheduleWorkSuccees(t *testing.T) {
 			Zones:           []string{"zone1"},
 			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
 			DurationMinutes: 30,
-			Id:              "testId",
+			WorkId:          "testId",
 			Priority:        "critical",
 		}
 		testItem := models.WorkItem{
 			Zones:           []string{"zone1"},
 			StartDate:       testTime.Round(time.Duration(24) * time.Hour).Add(time.Duration(7) * time.Hour),
 			DurationMinutes: 30,
-			Id:              "",
+			WorkId:          "",
 			Priority:        "critical",
 		}
 
@@ -74,13 +74,13 @@ func TestDublicateScheduleWorkError(t *testing.T) {
 			Zones:           []string{"zone1"},
 			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
 			DurationMinutes: 50,
-			Id:              "testId",
+			WorkId:          "testId",
 			Priority:        "regular",
 			WorkType:        "manual",
 			Deadline:        testTime.Add(time.Duration(480) * time.Hour),
 		}
 		testItem := expectedInDb
-		testItem.Id = ""
+		testItem.WorkId = ""
 		rep := RepositoryMock{
 			ListResult: []*models.WorkItem{&expectedInDb},
 		}
@@ -106,7 +106,7 @@ func TestProlongateWorkSuccees(t *testing.T) {
 			Zones:           []string{"zone1"},
 			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
 			DurationMinutes: 30,
-			Id:              "testId",
+			WorkId:          "testId",
 			Priority:        "regular",
 			WorkType:        "manual",
 			Deadline:        testTime.Add(time.Duration(480) * time.Hour),

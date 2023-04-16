@@ -64,7 +64,7 @@ func (sch *Scheduler) MoveWork(wi *models.WorkItem) (schedule []*models.WorkItem
 	// not inclide current saved wi in schedule on move
 	for z, sched := range zoneSchedule {
 		for i, w := range sched {
-			if w.Work.Id == wi.Id {
+			if w.Work.WorkId == wi.WorkId {
 				sched[i] = sched[len(sched)-1]
 				zoneSchedule[z] = sched[:len(sched)-1]
 				break
@@ -141,7 +141,7 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 		// если пришло изменение работ, то надо удалить ранее сущестовавший айтем из списка сравнения
 		tmp := zoneSchedule[z]
 		for i, s := range zoneSchedule[z] {
-			if s.Work.Id == wi.Id {
+			if s.Work.WorkId == wi.WorkId {
 				tmp[i] = tmp[len(tmp)-1]
 				tmp = tmp[:len(tmp)-1]
 			}
@@ -194,7 +194,7 @@ func merge(source []*IntervalWork, new []*models.WorkItem) []*IntervalWork {
 	for _, n := range new {
 		found := false
 		for i, j := range source {
-			if j.Work.Id == n.Id {
+			if j.Work.WorkId == n.WorkId {
 				found = true
 				source[i].Work = n
 			}
