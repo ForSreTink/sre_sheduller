@@ -135,6 +135,41 @@ func (a *Api) writeInternalError(w http.ResponseWriter, code string, message str
 
 func (a *Api) Getschedule(w http.ResponseWriter, r *http.Request, params GetscheduleParams) {
 	defer r.Body.Close()
+
+	var statuses []string
+	var zones []string
+
+	if params.FromDate == nil || params.ToDate == nil {
+		a.writeBadRequestError(w, "Bad request", "FromDate and StartDate can't be null")
+		return
+	}
+
+	if params.Statuses != nil {
+		for _, s := range *params.Statuses {
+			statuses = append(statuses, string(s))
+		}
+	}
+
+	if params.Zones != nil {
+		for _, s := range *params.Zones {
+			zones = append(zones, string(s))
+		}
+	}
+
+	works, err := a.RepoData.List(r.Context(), *params.FromDate, *params.ToDate, zones, statuses)
+	if err != nil {
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		return
+	}
+
+	works_b, err := json.Marshal(works)
+	if err != nil {
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(works_b)
 }
 
 func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +186,6 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 		a.writeBadRequestError(w, "Bad request", err.Error())
 		return
 	}
-	// TODO: код проверки условий для добавления
 
 	works, unexepted, err := a.Scheduller.ScheduleWork(work)
 	if err != nil {
@@ -224,7 +258,32 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 		return
 	}
 
+	if work.Status == "in_progress" || work.Status == "canceled" {
+		a.writeBadRequestError(w, "Bad request", "Can't move work with status != planned")
+		return
+	}
+
+	if err := a.validateAddWork(work); err != nil {
+		a.writeBadRequestError(w, "Bad request", err.Error())
+		return
+	}
+
+	works, unexepted, err := a.Scheduller.MoveWork(work)
+	if err != nil {
+		if unexepted {
+			a.writeInternalError(w, "Unexpected error", err.Error(), []*models.WorkItem{})
+		}
+		a.writeInternalError(w, "Unable to shedule", err.Error(), works)
+		return
+	}
+
 	// TODO: код для определения возможности переноса
+
+	work, err = a.RepoData.Update(r.Context(), work)
+	if err != nil {
+		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		return
+	}
 
 	work_b, err := json.Marshal(work)
 	if err != nil {
@@ -241,6 +300,11 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
 		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		return
+	}
+
+	if work.Status != "in_progress" {
+		a.writeBadRequestError(w, "Bad request", "Can't prolongate work with status != in_progress")
 		return
 	}
 
