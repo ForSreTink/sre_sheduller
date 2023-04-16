@@ -14,7 +14,11 @@ import (
 )
 
 const (
-	Critical = "critical"
+	PriorityCritical = "critical"
+	PriorityRegular  = "regular"
+	StatusInProgress = "in_progress"
+	StatusPlanned    = "planned"
+	StatusCancelled  = "cancelled"
 )
 
 type Scheduler struct {
@@ -45,11 +49,12 @@ func NewScheduler(ctx context.Context, repository repository.ReadWriteRepository
 
 func (sch *Scheduler) MoveWork(wi *models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
 	errorIsUnexpected = true
+	statuses := []string{StatusPlanned, StatusInProgress}
 	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
 	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
 	// текущее расписание
-	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones)
+	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones, statuses)
 	if err != nil {
 		return
 	}
@@ -73,11 +78,12 @@ func (sch *Scheduler) MoveWork(wi *models.WorkItem) (schedule []*models.WorkItem
 
 func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
 	errorIsUnexpected = true
+	statuses := []string{StatusPlanned, StatusInProgress}
 	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
 	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
 	// текущее расписание
-	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones)
+	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones, statuses)
 	if err != nil {
 		return
 	}
@@ -132,8 +138,8 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 	return
 }
 
-func (sch *Scheduler) getZoneSchedule(from time.Time, to time.Time, zones []string) (zoneSchedules map[string][]*IntervalWork, err error) {
-	works, err := sch.Repository.List(sch.ctx, from, to, zones, []string{})
+func (sch *Scheduler) getZoneSchedule(from time.Time, to time.Time, zones []string, statuses []string) (zoneSchedules map[string][]*IntervalWork, err error) {
+	works, err := sch.Repository.List(sch.ctx, from, to, zones, statuses)
 	if err != nil {
 		return
 	}
@@ -173,7 +179,7 @@ func checkZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span
 
 func (sch *Scheduler) checkZoneLists(zone string, wi *models.WorkItem) (availavle bool, err error) {
 	// проверяем, если зона в блеклисте && работы != критичные -> 500 возвращаем полную невозможность
-	if slices.Contains(sch.Config.BlackList, zone) && wi.Priority != string(Critical) {
+	if slices.Contains(sch.Config.BlackList, zone) && wi.Priority != string(PriorityCritical) {
 		err = fmt.Errorf("zone %v is in black list, unable to Schedule work with non-critical priority", zone)
 		return
 	}
