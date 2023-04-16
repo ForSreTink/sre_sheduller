@@ -89,7 +89,7 @@ func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result
 	if err != nil {
 		return
 	}
-	log.Printf("successfully updated %v work document with id %v\n", out.ModifiedCount, work.WorkId)
+	log.Printf("successfully updated %v work document with id %v\n", out.ModifiedCount, work.Id)
 	return
 }
 
