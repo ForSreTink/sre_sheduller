@@ -13,9 +13,9 @@ import (
 	"workScheduler/internal/configuration"
 	handlers "workScheduler/internal/handlers"
 
-	// mongo "workScheduler/internal/repository/mongo_integrations"
+	mongo "workScheduler/internal/repository/mongo_integrations"
 
-	inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
+	// inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
 
 	"github.com/go-openapi/runtime/middleware"
 	gorilla_handlers "github.com/gorilla/handlers"
@@ -43,12 +43,12 @@ func (s *Scheduler) Run() error {
 	var port = flag.Int("port", 8080, "Port for test HTTP server")
 	flag.Parse()
 
-	// data, err := mongo.NewMongoClient(s.Ctx)
-	// if err != nil {
-	// 	return err
-	// }
+	data, err := mongo.NewMongoClient(s.Ctx)
+	if err != nil {
+		return err
+	}
 
-	data := inmemoryrepository.NewInmemoryRepository()
+	// data := inmemoryrepository.NewInmemoryRepository()
 	scheduler := api.NewApi(data)
 
 	var sh http.Handler = middleware.SwaggerUI(middleware.SwaggerUIOpts{

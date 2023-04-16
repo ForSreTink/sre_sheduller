@@ -19,6 +19,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Defines values for PostWorkWorkType.
+const (
+	PostWorkWorkTypeAutomatic PostWorkWorkType = "automatic"
+	PostWorkWorkTypeManual    PostWorkWorkType = "manual"
+)
+
 // Defines values for WorkPriority.
 const (
 	Critical WorkPriority = "critical"
@@ -34,8 +40,8 @@ const (
 
 // Defines values for WorkWorkType.
 const (
-	Automatic WorkWorkType = "automatic"
-	Manual    WorkWorkType = "manual"
+	WorkWorkTypeAutomatic WorkWorkType = "automatic"
+	WorkWorkTypeManual    WorkWorkType = "manual"
 )
 
 // Defines values for GetscheduleParamsStatuses.
@@ -60,11 +66,15 @@ type MoveWork struct {
 
 // PostWork defines model for postWork.
 type PostWork struct {
-	Deadline        *time.Time `json:"deadline,omitempty"`
-	DurationMinutes *int32     `json:"durationMinutes,omitempty"`
-	StartDate       *time.Time `json:"startDate,omitempty"`
-	Zone            *string    `json:"zone,omitempty"`
+	Deadline        *time.Time        `json:"deadline,omitempty"`
+	DurationMinutes *int32            `json:"durationMinutes,omitempty"`
+	StartDate       *time.Time        `json:"startDate,omitempty"`
+	WorkType        *PostWorkWorkType `json:"workType,omitempty"`
+	Zones           *interface{}      `json:"zones,omitempty"`
 }
+
+// PostWorkWorkType defines model for PostWork.WorkType.
+type PostWorkWorkType string
 
 // ProlongateWork defines model for prolongateWork.
 type ProlongateWork struct {
@@ -80,9 +90,7 @@ type Work struct {
 	StartDate       *time.Time    `json:"startDate,omitempty"`
 	Status          *WorkStatus   `json:"status,omitempty"`
 	WorkType        *WorkWorkType `json:"workType,omitempty"`
-
-	// Zones List of zones
-	Zones *interface{} `json:"zones,omitempty"`
+	Zones           *interface{}  `json:"zones,omitempty"`
 }
 
 // WorkPriority defines model for Work.Priority.
@@ -454,25 +462,25 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xY32/bNhD+VwhuwF5UyUm7F701aTAYaIZiCbCHIhgu4tlmQ5EsebTrBf7fB1Lyj1hy",
-	"7LRpkw55SSzpyPt0930fKd7yytTWaNTkeXnLfTXBGtJPdM64+MM6Y9GRxHQbFKHTQHKK8VIS1um+CA5I",
-	"Gn0udaAmFL9AbRXy8jjjI+NqIF5yqen1Mc84zS02lzhGxxcZ9wSO3gGleVfxAghfkaxxPcaTk3rMF4vV",
-	"HXAO5nGOBPrUiLtzhN1Ja/Qexil85+zm+hNWlKLNFP827qZblqd5fYefg3QoePlxY/xVD3JrPO1AjiCU",
-	"1AenzZ7iXTP+r2kgrjLxdxdH93Fi492dUUaPgb5T7/pyzp5NraXoIXcsijRO0jzNqEMdKeRwHBQ4nvHK",
-	"SZIVqA0urYd+Rfc8AQW/mcsq0BpFzAW6QqXSb6n/sc6MHXrfmzqW9TLdXM9Ugw6geMYhkKmBZNU7NBKo",
-	"bYKvnLSxqrzk76UnZkaseZxx/GJV8g9yASMgXvLPAd2cZ6073rG9Tpq7jtTDjXhL6pHpQrmcSM88uik6",
-	"JnCKylgUbGQcu/jrjJGD6oZJzYaXv3l2KfWNGY3YhVEhDmenweY840pWqH2qj4Y65n1roZogO84HPOPB",
-	"KV7yCZEti2I2m+WQnubGjYt2qC/eD0/P/rw4e3WcD/IJ1Sq9lqQkuqggFusggsLIlCk638A/ygf50VEM",
-	"NhY1WMlL/jof5K95xi3QJNWrWI6NF2OkbhX+QFolYDNJExabHlsTlZTEMBRN3GqumMBBjYTO8/Lj9pQX",
-	"kbCejZyp93S4rVmMTARvLBaSxTbhaw4c5tE7sJA5DAmZ74TjIbxvsSxDv0IGfWWg4NFHCLG/jAyLdDgI",
-	"iG8H92P5NofZAn4VK++ticKIkx8PBvFfZTShTuwFa5WsEi+LTz6+3O0Gql8djnjJfynW+6yi3WQVaY1I",
-	"frBVm1BV6EdBJeW9GbzpiiTJMIlDCqYNG5mgRYz+/RHxNTvAHoBDnfaAamlWy8CM+1DX4Ob3yphg7NOG",
-	"ZaneqziyWK2Yxve4wqlDIGQaZ6zta0MbqRlMJSi4Vpi43PGJt0KkZb+REHo6MWL+aDVa7at6yvQQzOud",
-	"XKT9osO6o25J1jRhVcokGrr8AAKcgGBtNZ8V6R5S8SUNE+/WFCxu49+hWNy7QN2Z/XrOpOhbnyIxTuZD",
-	"sW99GoqlDfLW8OJ6ufa7BlGHJZvut+33L771Db7V2919fCmaVSZZWOhzsPT4EOY0kc+KPHvsJwF+Ov/5",
-	"Sal2HyP2sq02zQFML9fOzRRZ+kxjcT/IQAu2/JJMHxSbOTv8O29POZ6SfY+/Uq/Obnq69aB65Wzro5xJ",
-	"z0yaClR+wFr+4534RZIHSvKhwtkr0/XZ006xfliFNBawypdw7BLphzuHWv8vqW4d2PX08tCavUjxp5Xi",
-	"oS3eluBi8V8AAAD//7rUKPbVGAAA",
+	"H4sIAAAAAAAC/+yY32/bNhDH/xXiNmAvquQ43YvemiwYDDRDsQTYQxAMjHi22VAkSx7teoH/94GUf8WW",
+	"Y6VNm7TIS2LLR97x7nNfUryDytTWaNTkobwDX42x5ukjOmdc/GCdsehIYnrMFaHTnOQE41dJWKfnIjhO",
+	"0uhzqQM1pviZ11YhlP0MhsbVnKAEqem4DxnQzGLzFUfoYJ6BJ+7oD05p3pW94IRvSNa4HuPJST2C+Xz1",
+	"hDvHZ3GOFPSpEffnCPud1ug9HyXzvbObm49YUbI2E/zHuNvdtDzP8h1+CtKhgPJqY/x1S+TWeNoTOXKh",
+	"pO7sNnuOtWYwNe72Mj28A9ShjkvmgUzNSVaQQc114Gpj7euh/xm9FeUViOoIMhBVP45oqL+H884k90lr",
+	"pcM6o4wecfpGjLT5nL6YmkrRmjfrpHGSZpt1czgKijvIoHKSZLWnbl9AiSdOwW/6soprjSL64rpCpdJn",
+	"qf+1zowcet/quo22BWHZBnYP0vYkVMVHUg9NU1VfOWljmaCEy7H0zKOboGMCJ6iMRcGGxrGLv88YOV7d",
+	"MqnZ4PI3zy6lvjXDIbswKsTh7DTYHDJQskLt0yo1r6Pfd5ZXY2T9vAcZBKeghDGRLYtiOp3mPP2aGzcq",
+	"FkN98X5wevbXxdmbft7Lx1SrtCxJERyIfcBiHkRQGOs9Qeeb8I/yXn50FI2NRc2thBKO815+DBlYTuOU",
+	"r2I5Nn4ZIe1m4U+klQM2lTRmsXQe0rQN0gPR2K3mig4cr5HQeSivtqe8iNh5NnSmhgzws1VpPyEXMNYC",
+	"SvgU0M0gW+YsWiZMG0HmSZAb8zUD3RR9TyxkukVC5hvF8V56YmbIGrg7xbI0/YI2aEsDBY8+hhDry8iw",
+	"iEOnQPxicHssX6cTW4Ffx8x7a2JjxMn7vV78VxlNqBO93Folq8Rl8dHHxW0Kxa8Oh1DCL8X6VFYsjmRF",
+	"UvqkB1u5CVWFfhhU6ry3vbe7TZLaMDWHFEwbNjRBi2j9+xPG15wXWwIc6HRiVEuxWhpm4ENdczd7sI2J",
+	"j3w63iy79zqOLFb7nvEtqnDqkBMyjVO2qGuDjdSMTyRX/EZhYnlHJ94JkTbvpoXQ04kRsyfL0eoU1pKm",
+	"x8S8PvdF7Oc71B3tpmSNCauSJ9Hg8h0AOOGCLbL5oqB7TMaXGCbu1ggWd/HvQMwf3KDuzX4zY1K07U8R",
+	"jJPZQBzanwZiKYOwELy4X671roloh5JN9dvW+1fd+grdaq3uIV6KZpdJEhbaFCz93IWcxvJFwXNAflLA",
+	"z6c/PyhqDxFxkLbaNNc1raydmwmy9LLF4nmQcS3Y8n0wvVBs+tzh73xxJ/Kc9D39Tr266Wmp1qPylbOt",
+	"V2smPTNpKq7yDnv591fi15bs2JKPbZyDbbq+QdrbrB9WJo0ErPylOPY16Yd7V1M/V6tuXbu11LJrzl5b",
+	"8Ydtxa4l3m7B+fz/AAAA//9bx4TUAxkAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

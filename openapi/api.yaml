@@ -248,9 +248,14 @@ components:
     postWork:
       type: object
       properties:
-        zone:
-          type: string
-          example: DS1
+        zones:
+          schema:
+            type: array
+            items:
+              type: string
+          example:
+            - dc1
+            - dc2
         startDate:
           type: string
           format: date-time
@@ -258,6 +263,11 @@ components:
           type: integer
           format: int32
           example: 2
+        workType:
+          type: string
+          enum:
+            - automatic
+            - manual
         deadline:
           type: string
           format: date-time
@@ -274,9 +284,6 @@ components:
         id:
           type: string
         zones:
-          in: query
-          description: List of zones
-          explode: true
           schema:
             type: array
             items:
