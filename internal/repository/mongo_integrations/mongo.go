@@ -83,13 +83,13 @@ func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *m
 }
 
 func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
-	filter := bson.D{{Key: "workId", Value: work.Id}}
+	filter := bson.D{{Key: "workId", Value: work.WorkId}}
 	opts := options.Update().SetUpsert(true)
 	out, err := m.worksCollection.UpdateOne(ctx, filter, work, opts)
 	if err != nil {
 		return
 	}
-	log.Printf("successfully updated %v work document with id %v\n", out.ModifiedCount, work.Id)
+	log.Printf("successfully updated %v work document with id %v\n", out.ModifiedCount, work.WorkId)
 	return
 }
 
