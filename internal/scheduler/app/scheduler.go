@@ -30,6 +30,10 @@ type Scheduler struct {
 	ctx        context.Context
 }
 
+type Schedule struct {
+	scheduleByZones map[string][]*IntervalWork
+}
+
 type IntervalWork struct {
 	Span *interval.Span
 	Work *models.WorkItem
@@ -52,28 +56,28 @@ func NewScheduler(ctx context.Context, repository repository.ReadRepository, con
 
 func (sch *Scheduler) MoveWork(wi *models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
 	errorIsUnexpected = true
-	statuses := []string{StatusPlanned, StatusInProgress}
+
 	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
 	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
 	// текущее расписание
-	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones, statuses)
+	allZonesSchedule, err := sch.getAllZonesSchedule(from, to)
 	if err != nil {
 		return
 	}
 	// not inclide current saved wi in schedule on move
-	for z, sched := range zoneSchedule {
+	for z, sched := range allZonesSchedule.scheduleByZones {
 		for i, w := range sched {
 			if w.Work.WorkId == wi.WorkId {
 				sched[i] = sched[len(sched)-1]
-				zoneSchedule[z] = sched[:len(sched)-1]
+				allZonesSchedule.scheduleByZones[z] = sched[:len(sched)-1]
 				break
 			}
 		}
 	}
 	//Критичные работы помещать в расписание вне очереди, принудительно отменяя обычные ручные работы и сжимая или перенося работы обычные автоматические.
 	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
-	schedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
+	schedule, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
@@ -83,18 +87,17 @@ func (sch *Scheduler) MoveWork(wi *models.WorkItem) (schedule []*models.WorkItem
 
 func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
 	errorIsUnexpected = true
-	statuses := []string{StatusPlanned, StatusInProgress}
 	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
 	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
 	// текущее расписание
-	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones, statuses)
+	allZonesSchedule, err := sch.getAllZonesSchedule(from, to)
 	if err != nil {
 		return
 	}
 	//Критичные работы помещать в расписание вне очереди, принудительно отменяя обычные ручные работы и сжимая или перенося работы обычные автоматические.
 	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
-	schedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
+	schedule, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
@@ -104,16 +107,15 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 
 func (sch *Scheduler) ProlongateWorkById(wi *models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
 	errorIsUnexpected = true
-	statuses := []string{StatusPlanned, StatusInProgress}
 	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
 	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
 	// текущее расписание
-	zoneSchedule, err := sch.getZoneSchedule(from, to, wi.Zones, statuses)
+	allZonesSchedule, err := sch.getAllZonesSchedule(from, to)
 	if err != nil {
 		return
 	}
-	newSchedule, zoneErr := sch.chekScheduleChange(zoneSchedule, wi, true, true, false)
+	newSchedule, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, true, false)
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
@@ -123,14 +125,14 @@ func (sch *Scheduler) ProlongateWorkById(wi *models.WorkItem) (schedule []*model
 	return
 }
 
-func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork, wi *models.WorkItem, move bool, cancelAuto bool, cancelManual bool) (schedule []*models.WorkItem, err error) {
+func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.WorkItem, move bool, cancelAuto bool, cancelManual bool) (schedule []*models.WorkItem, err error) {
 	hasFreeWindow := false
 	workItemInterval, err := getWorkInterval(wi)
 	if err != nil {
 		return
 	}
 
-	scheduleRyZone := make(map[string][]*models.WorkItem)
+	scheduleWIZone := make(map[string][]*models.WorkItem)
 	for _, z := range wi.Zones {
 		// проверить black и white листы
 		_, zoneErr := sch.checkZoneLists(z, wi)
@@ -139,16 +141,18 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 			return
 		}
 		// если пришло изменение работ, то надо удалить ранее сущестовавший айтем из списка сравнения
-		tmp := zoneSchedule[z]
-		for i, s := range zoneSchedule[z] {
+		tmp := zonesSchedule.scheduleByZones[z]
+		removed_cnt := 0
+		for i, s := range zonesSchedule.scheduleByZones[z] {
 			if s.Work.WorkId == wi.WorkId {
-				tmp[i] = tmp[len(tmp)-1]
+				tmp[i-removed_cnt] = tmp[len(tmp)-1]
 				tmp = tmp[:len(tmp)-1]
+				removed_cnt++
 			}
 		}
-		zoneSchedule[z] = tmp
+		zonesSchedule.scheduleByZones[z] = tmp
 		// проверить, нет ли работ в это время, если нет -> проверить min_avialable_zones
-		zoneScheduleByZone, ok := zoneSchedule[z]
+		zoneScheduleByZone, ok := zonesSchedule.scheduleByZones[z]
 		if ok {
 			hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, *workItemInterval)
 		}
@@ -160,8 +164,8 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 				return
 			} else {
 				hasFreeWindow = true
-				scheduleRyZone[z] = append(scheduleRyZone[z], wi)
-				scheduleRyZone[z] = append(scheduleRyZone[z], changes...)
+				scheduleWIZone[z] = append(scheduleWIZone[z], wi)
+				scheduleWIZone[z] = append(scheduleWIZone[z], changes...)
 			}
 			return
 		}
@@ -170,12 +174,12 @@ func (sch *Scheduler) chekScheduleChange(zoneSchedule map[string][]*IntervalWork
 		//min_avialable_zones вполняется -> 201 планируем
 		available_count := 0
 		for z := range sch.Config.WhiteList {
-			if checkZoneAvailabe(merge(zoneSchedule[z], scheduleRyZone[z]), *workItemInterval) {
+			if checkZoneAvailabe(merge(zonesSchedule.scheduleByZones[z], scheduleWIZone[z]), *workItemInterval) {
 				available_count++
 			}
 		}
 		if available_count > int(sch.Config.MinAvialableZones) {
-			for _, i := range scheduleRyZone {
+			for _, i := range scheduleWIZone {
 				schedule = append(schedule, i...)
 			}
 
@@ -211,12 +215,19 @@ func merge(source []*IntervalWork, new []*models.WorkItem) []*IntervalWork {
 	return source
 }
 
-func (sch *Scheduler) getZoneSchedule(from time.Time, to time.Time, zones []string, statuses []string) (zoneSchedules map[string][]*IntervalWork, err error) {
-	works, err := sch.Repository.List(sch.ctx, from, to, zones, statuses)
+func (sch *Scheduler) getAllZonesSchedule(from time.Time, to time.Time) (zoneSchedules Schedule, err error) {
+	statuses := []string{StatusPlanned, StatusInProgress}
+	works, err := sch.Repository.List(sch.ctx, from, to, []string{}, statuses)
 	if err != nil {
 		return
 	}
-	zoneSchedules = make(map[string][]*IntervalWork)
+	sort.Slice(works, func(i, j int) bool {
+		return works[i].StartDate.Before(works[j].StartDate)
+	})
+
+	zoneSchedules = Schedule{
+		scheduleByZones: make(map[string][]*IntervalWork),
+	}
 	for _, w := range works {
 		interval, intErr := getWorkInterval(w)
 		if intErr != nil {
@@ -228,10 +239,25 @@ func (sch *Scheduler) getZoneSchedule(from time.Time, to time.Time, zones []stri
 			Work: w,
 		}
 		for _, z := range w.Zones {
-			if value, ok := zoneSchedules[z]; !ok {
-				zoneSchedules[z] = []*IntervalWork{&iw}
+			if value, ok := zoneSchedules.scheduleByZones[z]; !ok {
+				zoneSchedules.scheduleByZones[z] = []*IntervalWork{&iw}
 			} else {
-				zoneSchedules[z] = append(value, &iw)
+				zoneSchedules.scheduleByZones[z] = append(value, &iw)
+			}
+		}
+	}
+	return
+}
+
+func (s *Schedule) getWindowWorks(searchInterval interval.Span) (windows map[string][]*IntervalWork) {
+	windows = make(map[string][]*IntervalWork)
+	for z, works := range s.scheduleByZones {
+		for _, w := range works {
+			if w.Span.IsIntersection(searchInterval) {
+				windows[z] = append(windows[z], w)
+			}
+			if w.Span.Start().After(searchInterval.End()) {
+				break
 			}
 		}
 	}
@@ -276,9 +302,11 @@ func moveZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span,
 }
 
 func createMovement(zoneSchedule []*IntervalWork, checkInterval interval.Span) (changes []*models.WorkItem, err error) {
-	sort.Slice(zoneSchedule, func(i, j int) bool {
-		return zoneSchedule[i].Work.StartDate.Before(zoneSchedule[j].Work.StartDate)
-	})
+	// alredy sorted??
+
+	// sort.Slice(zoneSchedule, func(i, j int) bool {
+	// 	return zoneSchedule[i].Work.StartDate.Before(zoneSchedule[j].Work.StartDate)
+	// })
 	last_interval := checkInterval
 	for _, inter := range zoneSchedule {
 		if last_interval.Start().Before(inter.Span.Start()) && last_interval.End().After(inter.Span.Start()) {
