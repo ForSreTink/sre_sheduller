@@ -10,6 +10,10 @@ import (
 	"workScheduler/internal/scheduler/models"
 )
 
+const (
+	unitTestConfigName = "../test_configs/scheduler_unit_config.yml"
+)
+
 type RepositoryMock struct {
 	GetByIdResult *models.WorkItem
 	ListResult    []*models.WorkItem
@@ -62,7 +66,7 @@ func TestScheduleWorkSuccees(t *testing.T) {
 			ListResult: expectedInDb,
 		}
 		ctx := context.Background()
-		c := configuration.NewConfigurator(ctx, "../../../config.yml")
+		c := configuration.NewConfigurator(ctx, unitTestConfigName)
 		c.Run()
 
 		scheduler := NewScheduler(ctx, rep, c)

@@ -70,6 +70,9 @@ func (c *Configurator) mainProcess() {
 	}
 	defer watcher.Close()
 	err = watcher.Add(path)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for {
 		select {
@@ -104,7 +107,7 @@ func (c *Configurator) updateConfig() {
 		log.Printf("WARNING: Given config is invalid, config update ignoring: %s", err)
 		return
 	}
-	err = c.validateConfig(conf)
+	err = c.validateConfig(&conf)
 	if err != nil && !c.Started {
 		log.Fatal(err)
 	} else if err != nil {
@@ -132,13 +135,14 @@ func (c *Configurator) readConfig() (config Config, err error) {
 	return
 }
 
-func (c *Configurator) validateConfig(conf Config) error {
+func (c *Configurator) validateConfig(conf *Config) error {
 	errStr := ""
 	ts := time.Now()
 	zones := make(map[string]time.Time)
 	for name, zone := range conf.WhiteList {
 		zones[name] = ts
-		for _, interval := range zone {
+		additionalIntervals := []Window{}
+		for i, interval := range zone {
 			if interval.StartHour >= 24 {
 				errStr += "start_hour must be uint in range from 0 to 23; "
 			}
@@ -146,9 +150,12 @@ func (c *Configurator) validateConfig(conf Config) error {
 				errStr += "EndHour must be uint in range from 1 to 23; "
 			}
 			if interval.StartHour >= interval.EndHour {
-				errStr += "EndHour must greater then StartHour.; "
+				// add new interval above 00:00
+				additionalIntervals = append(additionalIntervals, Window{StartHour: 0, EndHour: interval.EndHour})
+				conf.WhiteList[name][i].EndHour = 24
 			}
 		}
+		conf.WhiteList[name] = append(zone, additionalIntervals...)
 	}
 	for _, name := range conf.BlackList {
 		if _, ok := zones[name]; ok {
@@ -158,8 +165,8 @@ func (c *Configurator) validateConfig(conf Config) error {
 		}
 	}
 
-	if conf.MinAvialableZones > int32(len(conf.WhiteList)-2) || conf.MinAvialableZones < 2 {
-		errStr += "MinAvialableZones must be greater then zone count, min 2; "
+	if conf.MinAvialableZones > int32(len(conf.WhiteList)-2) { //|| conf.MinAvialableZones < 2
+		errStr += fmt.Sprintf("MinAvialableZones must not be greater then zone count=%v, got MinAvialableZones=%v; ", int32(len(conf.WhiteList)-2), conf.MinAvialableZones)
 	}
 
 	for k, v := range conf.PausesMinutes {
