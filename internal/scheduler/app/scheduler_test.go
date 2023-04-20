@@ -33,24 +33,33 @@ func TestScheduleWorkSuccees(t *testing.T) {
 
 	t.Run("succees schedule work", func(t *testing.T) {
 
-		testTime := time.Now()
-		expectedInDb := models.WorkItem{
-			Zones:           []string{"zone1"},
-			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
-			DurationMinutes: 30,
-			WorkId:          "testId",
-			Priority:        "critical",
+		testTime := time.Now().Round(time.Hour * 24)
+		expectedInDb := []*models.WorkItem{
+			{
+				Zones:           []string{"zone1"},
+				StartDate:       testTime.Add(time.Duration(7) * time.Hour),
+				DurationMinutes: 30,
+				WorkId:          "testId",
+				Priority:        "critical",
+			},
+			{
+				Zones:           []string{"zone3"},
+				StartDate:       testTime.Add(time.Duration(8) * time.Hour),
+				DurationMinutes: 30,
+				WorkId:          "testId",
+				Priority:        "critical",
+			},
 		}
 		testItem := models.WorkItem{
-			Zones:           []string{"zone1"},
-			StartDate:       testTime.Round(time.Duration(24) * time.Hour).Add(time.Duration(7) * time.Hour),
+			Zones:           []string{"zone1", "zone2"},
+			StartDate:       testTime.Add(time.Duration(8) * time.Hour),
 			DurationMinutes: 30,
 			WorkId:          "",
 			Priority:        "critical",
 		}
 
 		rep := RepositoryMock{
-			ListResult: []*models.WorkItem{&expectedInDb},
+			ListResult: expectedInDb,
 		}
 		ctx := context.Background()
 		c := configuration.NewConfigurator(ctx, "../../../config.yml")
@@ -69,10 +78,10 @@ func TestDublicateScheduleWorkError(t *testing.T) {
 
 	t.Run("error duplicate schedule work", func(t *testing.T) {
 
-		testTime := time.Now()
+		testTime := time.Now().Round(time.Hour * 24)
 		expectedInDb := models.WorkItem{
 			Zones:           []string{"zone1"},
-			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
+			StartDate:       testTime.Add(time.Duration(12) * time.Hour),
 			DurationMinutes: 50,
 			WorkId:          "testId",
 			Priority:        "regular",
@@ -101,10 +110,10 @@ func TestProlongateWorkSuccees(t *testing.T) {
 
 	t.Run("succees prolongate work", func(t *testing.T) {
 
-		testTime := time.Now()
+		testTime := time.Now().Round(time.Hour * 24)
 		expectedInDb := models.WorkItem{
 			Zones:           []string{"zone1"},
-			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
+			StartDate:       testTime.Add(time.Duration(12) * time.Hour),
 			DurationMinutes: 30,
 			WorkId:          "testId",
 			Priority:        "regular",
@@ -124,7 +133,7 @@ func TestProlongateWorkSuccees(t *testing.T) {
 		scheduler := NewScheduler(ctx, rep, c)
 		result, _, err := scheduler.ProlongateWorkById(&testItem)
 		if err != nil {
-			t.Errorf("Expect return error but got result: %v", err)
+			t.Errorf("Unexpected error: %v", err)
 		}
 		if len(result) == 0 {
 			t.Errorf("Expect non-zero works count in result: %v", err)
