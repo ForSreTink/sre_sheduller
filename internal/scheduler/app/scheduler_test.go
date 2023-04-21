@@ -138,7 +138,7 @@ func TestProlongateWorkSuccees(t *testing.T) {
 		time.Sleep(2 * time.Second)
 
 		scheduler := NewScheduler(ctx, rep, c)
-		result, _, err := scheduler.ProlongateWorkById(&testItem)
+		result, _, err := scheduler.ProlongateWorkById([]*models.WorkItem{&testItem})
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}

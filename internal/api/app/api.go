@@ -99,7 +99,7 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	if work.StartDate.Minute()%5 != 0 && work.WorkType == "manual" {
 		errStr += "Manual work started time must be multiple by 5 minutes; "
 	}
-	if work.StartDate.Minute()%1 != 0 && work.WorkType == "automatic" {
+	if work.StartDate.Second() != 0 && work.StartDate.Nanosecond() != 0 {
 		errStr += "Automatic work started time must be multiple by 1 minutes; "
 	}
 
@@ -242,7 +242,7 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 		return
 	}
 
-	for idx, _ := range works {
+	for idx := range works {
 		works[idx].Status = "cancelled"
 		works[idx], err = a.RepoData.Update(r.Context(), works[idx])
 		if err != nil {
@@ -371,7 +371,7 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 		return
 	}
 
-	works, needUserApprove, err := a.Scheduller.ProlongateWorkById(work)
+	works, needUserApprove, err := a.Scheduller.ProlongateWorkById(works)
 	if needUserApprove {
 		a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
 		return
