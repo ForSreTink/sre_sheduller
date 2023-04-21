@@ -182,14 +182,23 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 		zonesSchedule.scheduleByZones[z] = tmp
 		// проверить, нет ли работ в это время, если нет -> сдвиг, отмена и т.п. предложения
 		zoneScheduleByZone, ok := zonesSchedule.scheduleByZones[z]
-
+		if ok {
+			// для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
+			startTime, moveErr := moveToNextAvailable(zoneScheduleByZone, wi)
+			if moveErr == nil {
+				change := wi
+				change.StartDate = startTime
+				scheduleWIZone = append(scheduleWIZone, change)
+				break
+			}
+		}
 		zoneWorkItemInterval, _ := interval.New(minStartDate, minStartDate.Add(time.Duration(wi.DurationMinutes)*time.Minute))
 		for zoneWorkItemInterval.End().Before(wiCopyForThisZ.Deadline) {
 			if ok {
 				hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, zoneWorkItemInterval)
 				if !hasFreeWindow {
-					//	todo по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
-					changes, moveErr := moveZoneAvailabe(zoneScheduleByZone, zoneWorkItemInterval, move, cancelAuto, cancelManual)
+					// варианты сдвигов и отмен других тасок в расписании, если это разрешено
+					changes, moveErr := moveOrCancelOthers(zoneScheduleByZone, zoneWorkItemInterval, move, cancelAuto, cancelManual)
 					if moveErr != nil || len(changes) == 0 {
 						err = moveErr
 						return
@@ -309,7 +318,27 @@ func checkZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span
 	return
 }
 
-func moveZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span, move bool, cancelAuto bool, cancelManual bool) (changes []*models.WorkItem, err error) {
+func moveToNextAvailable(zoneSchedule []*IntervalWork, wi *models.WorkItem) (startTime time.Time, err error) {
+	for intervalIndex := 0; intervalIndex < len(zoneSchedule); intervalIndex++ {
+		sugestedInterval := wi.Deadline.Sub(zoneSchedule[intervalIndex].Span.End())
+		if intervalIndex < len(zoneSchedule)-1 {
+			sugestedInterval = zoneSchedule[intervalIndex+1].Span.Start().Sub(zoneSchedule[intervalIndex].Span.End())
+		}
+
+		if sugestedInterval > (time.Duration(wi.DurationMinutes) * time.Minute) {
+			startTime = zoneSchedule[intervalIndex].Span.End()
+			checkInterval, _ := interval.New(startTime, startTime.Add(time.Duration(wi.DurationMinutes)*time.Minute))
+			hasFreeWindow := checkZoneAvailabe(zoneSchedule, checkInterval)
+			if hasFreeWindow {
+				return
+			}
+		}
+	}
+	err = fmt.Errorf("unable to move work to another time before deadline")
+	return
+}
+
+func moveOrCancelOthers(zoneSchedule []*IntervalWork, checkInterval interval.Span, move bool, cancelAuto bool, cancelManual bool) (changes []*models.WorkItem, err error) {
 	for _, interv := range zoneSchedule {
 		if interv.Span.IsIntersection(checkInterval) {
 			if (cancelManual && interv.Work.WorkType == WorkTypeManual) || (cancelAuto && interv.Work.WorkType == WorkTypeAutomatic) {
