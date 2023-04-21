@@ -15,15 +15,15 @@ const (
 )
 
 type RepositoryMock struct {
-	GetByIdResult *models.WorkItem
+	GetByIdResult []*models.WorkItem
 	ListResult    []*models.WorkItem
 }
 
 var _ repository.ReadRepository = (*RepositoryMock)(nil)
 
-func (r RepositoryMock) GetById(ctx context.Context, id string) (mod *models.WorkItem, err error) {
+func (r RepositoryMock) GetById(ctx context.Context, id string) (mod []*models.WorkItem, err error) {
 	mod = r.GetByIdResult
-	if r.GetByIdResult == nil {
+	if len(r.GetByIdResult) == 0 {
 		err = fmt.Errorf("test error from RepositoryMock")
 	}
 	return
