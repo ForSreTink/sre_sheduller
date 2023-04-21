@@ -299,7 +299,7 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 		return
 	}
 
-	works, needUserApprove, err := a.Scheduller.MoveWork(work)
+	works, needUserApprove, err := a.Scheduller.MoveWork(works)
 	if err != nil {
 		if needUserApprove {
 			a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})

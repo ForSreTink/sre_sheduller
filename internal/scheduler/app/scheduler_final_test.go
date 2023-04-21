@@ -263,9 +263,9 @@ func TestScheduleEvents(t *testing.T) {
 			case "add":
 				result, userMustApprove, err = scheduler.ScheduleWork(e.NewWork)
 			case "move":
-				result, userMustApprove, err = scheduler.MoveWork(e.NewWork)
+				result, userMustApprove, err = scheduler.MoveWork([]*models.WorkItem{e.NewWork})
 			case "prolongate":
-				result, userMustApprove, err = scheduler.MoveWork(e.NewWork)
+				result, userMustApprove, err = scheduler.MoveWork([]*models.WorkItem{e.NewWork})
 			case "config change":
 				e.ConfigChange(c.Data)
 			default:
