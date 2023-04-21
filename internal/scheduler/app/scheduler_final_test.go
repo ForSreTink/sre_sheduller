@@ -282,7 +282,9 @@ func TestScheduleEvents(t *testing.T) {
 					fmt.Printf("%s: event processing return userMustApprove\n", e.Name)
 				}
 				if len(e.ExpectedVariants) > 0 {
+					fmt.Printf("%s: event processing return variants:  %v", e.Name, result)
 					if len(e.ExpectedVariants) != len(result) {
+
 						t.Errorf("%s: event processing return unexpected variants count: %v, expected %v\n", e.Name, len(result), len(e.ExpectedVariants))
 					} else {
 						// sort results and expectations by start date
