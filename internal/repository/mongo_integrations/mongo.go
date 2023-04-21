@@ -66,10 +66,12 @@ func NewMongoClient(ctx context.Context) (c *MongoClient, err error) {
 
 var _ repository.ReadWriteRepository = (*MongoClient)(nil)
 
-func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
+func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (results []*models.WorkItem, err error) {
 
-	result = work
-	result.WorkId = uuid.New().String()
+	result := work
+	if result.WorkId != "" {
+		result.WorkId = uuid.New().String()
+	}
 	out, err := m.worksCollection.InsertOne(ctx, work)
 	if err != nil {
 		return
@@ -83,7 +85,7 @@ func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *m
 }
 
 func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
-	filter := bson.D{{Key: "workId", Value: work.WorkId}}
+	filter := bson.D{{Key: "_id", Value: work.Id}}
 	update := bson.M{
 		"$set": work,
 	}
@@ -96,9 +98,16 @@ func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result
 	return
 }
 
-func (m *MongoClient) GetById(ctx context.Context, id string) (result *models.WorkItem, err error) {
+func (m *MongoClient) GetById(ctx context.Context, id string) (results []*models.WorkItem, err error) {
 	filter := bson.D{{Key: "workId", Value: id}}
-	err = m.worksCollection.FindOne(ctx, filter).Decode(&result)
+	cursor, err := m.worksCollection.Find(ctx, filter)
+	if err != nil {
+		return
+	}
+	defer cursor.Close(ctx)
+
+	err = cursor.All(ctx, results)
+
 	return
 }
 
