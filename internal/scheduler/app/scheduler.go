@@ -379,6 +379,9 @@ func (sch *Scheduler) moveToNextAvailable(sugestedAllZonesSchedule map[string][]
 				return
 			}
 		}
+
+		sugestedStartTime = sugestedEndTime
+		sugestedEndTime = sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
 	}
 	err = fmt.Errorf("unable to move work to another time before deadline")
 	return
