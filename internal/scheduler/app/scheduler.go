@@ -153,10 +153,21 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 		wiCopyForThisZ.Zones = []string{z}
 
 		// проверить black и white листы
-		_, zoneErr := sch.checkZoneLists(z, wi)
+		available, zoneErr := sch.checkZoneLists(z, &wiCopyForThisZ)
+		// попали в black лист или интервал заведомо больше, чем есть в white листе
 		if zoneErr != nil {
 			err = zoneErr
 			return
+		}
+		// не попали по времени в white лист
+		var minStartDate = wiCopyForThisZ.StartDate
+		if !available {
+			date, winErr := sch.getNearestZoneWindowStart(z, &wiCopyForThisZ)
+			if winErr != nil {
+				err = winErr
+				return
+			}
+			minStartDate = date
 		}
 		// если пришло изменение работ, то надо удалить ранее существовавший айтем из списка сравнения
 		tmp := zonesSchedule.scheduleByZones[z]
@@ -172,13 +183,13 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 		// проверить, нет ли работ в это время, если нет -> сдвиг, отмена и т.п. предложения
 		zoneScheduleByZone, ok := zonesSchedule.scheduleByZones[z]
 
-		zoneWorkItemInterval := workItemInterval
+		zoneWorkItemInterval, _ := interval.New(minStartDate, minStartDate.Add(time.Duration(wi.DurationMinutes)*time.Minute))
 		for zoneWorkItemInterval.End().Before(wiCopyForThisZ.Deadline) {
 			if ok {
-				hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, *zoneWorkItemInterval)
+				hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, zoneWorkItemInterval)
 				if !hasFreeWindow {
 					//	todo по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
-					changes, moveErr := moveZoneAvailabe(zoneScheduleByZone, *zoneWorkItemInterval, move, cancelAuto, cancelManual)
+					changes, moveErr := moveZoneAvailabe(zoneScheduleByZone, zoneWorkItemInterval, move, cancelAuto, cancelManual)
 					if moveErr != nil || len(changes) == 0 {
 						err = moveErr
 						return
@@ -202,10 +213,9 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 				schedule = append(schedule, scheduleWIZone...)
 				break
 			} else { //min_avialable_zones не вполняется -> пробуем сдвинуть еще дальше
-				nextInterval, _ := interval.New(
+				zoneWorkItemInterval, _ = interval.New(
 					zoneWorkItemInterval.End(),
 					zoneWorkItemInterval.End().Add(time.Duration(wiCopyForThisZ.DurationMinutes)*time.Minute))
-				zoneWorkItemInterval = &nextInterval
 				scheduleWIZone = []*models.WorkItem{}
 			}
 		}
@@ -348,14 +358,17 @@ func createMovement(zoneSchedule []*IntervalWork, checkInterval interval.Span) (
 }
 
 func (sch *Scheduler) checkZoneLists(zone string, wi *models.WorkItem) (availavle bool, err error) {
-	// проверяем, если зона в блеклисте && работы != критичные -> 500 возвращаем полную невозможность
+	// проверяем, если зона в блеклисте && работы != критичные -> 500 возвращаем полную невозможность - err
 	if slices.Contains(sch.Config.BlackList, zone) && wi.Priority != string(PriorityCritical) {
 		err = fmt.Errorf("zone %v is in black list, unable to Schedule work with non-critical priority", zone)
 		return
 	}
 	// проверяем, если зона в вайт листе && работы не в окне -> 500 возвращаем невозможность c вариантами сдвига
 	windows, ok := sch.Config.WhiteList[zone]
-	if ok {
+	if !ok {
+		err = fmt.Errorf("zone %v not found in zone white-list", zone)
+		return
+	} else {
 		workIntervals := []configuration.Window{}
 		endDate := wi.StartDate.Add(time.Duration(wi.DurationMinutes) * time.Minute)
 		if wi.DurationMinutes >= 60*24 {
@@ -404,10 +417,37 @@ func (sch *Scheduler) checkZoneLists(zone string, wi *models.WorkItem) (availavl
 				continue
 			}
 			if !isInWindow {
-				err = fmt.Errorf("zone %v is in white list, but work time is not in zone white-list window", zone)
-				//todo - варианты сдвига
 				return
 			}
+		}
+		availavle = true
+	}
+	return
+}
+
+func (sch *Scheduler) getNearestZoneWindowStart(zone string, wi *models.WorkItem) (start time.Time, err error) {
+	windows, ok := sch.Config.WhiteList[zone]
+	if !ok {
+		err = fmt.Errorf("zone %v not found in zone white-list", zone)
+		return
+	} else {
+		day := time.Date(wi.StartDate.Year(), wi.StartDate.Month(), wi.StartDate.Day(), 0, 0, 0, 0, time.UTC)
+		sugestions := []time.Time{}
+		for _, w := range windows {
+			if wi.StartDate.Hour() < int(w.StartHour) {
+				sugestions = append(sugestions, day.Add(time.Duration(w.StartHour)*time.Hour))
+				continue
+			}
+			if wi.StartDate.Hour() > int(w.EndHour) {
+				sugestions = append(sugestions, day.Add(time.Duration(w.StartHour+24)*time.Hour))
+				continue
+			}
+		}
+		if len(sugestions) > 0 {
+			sort.Slice(sugestions, func(i, j int) bool {
+				return sugestions[i].Before(sugestions[j])
+			})
+			start = sugestions[0]
 		}
 	}
 	return

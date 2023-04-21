@@ -20,7 +20,7 @@ type TestEvent struct {
 	NewWork          *models.WorkItem
 	Action           string
 	ActionTime       time.Time
-	IsExpectedError  bool
+	UserMustApprove  bool
 	ExpectedVariants []*models.WorkItem
 	ConfigChange     func(*configuration.Config)
 }
@@ -69,7 +69,18 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "automatic",
 			},
-			IsExpectedError: true,
+			UserMustApprove: true, // проводить работы в Zone_1 в 00:00 не разрешено - предлагаем боту слот в 3:00, на который он соглашается
+			ExpectedVariants: []*models.WorkItem{
+				{
+					Zones:           []string{"Zone_1", "Zone_4"},
+					StartDate:       time.Date(2023, 04, 19, 3, 0, 0, 0, time.UTC), //19 апреля	00:00
+					DurationMinutes: 30,
+					Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 05:00
+					WorkId:          "3",
+					Priority:        "regular",
+					WorkType:        "automatic",
+				},
+			},
 		},
 		{
 			Name:       "4. Заявка на проведение работ 4, 18 апреля 11:59",
@@ -84,7 +95,7 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "automatic",
 			},
-			IsExpectedError: true, //конфликт с работами с ID 2, плюс в Zone_4 в это время уже ничего нельзя проводить
+			UserMustApprove: true, //конфликт с работами с ID 2, плюс в Zone_4 в это время уже ничего нельзя проводить
 			ExpectedVariants: []*models.WorkItem{ //предлагаем два свободных слота в 03:30 и 04:00, т.к. занять все зоны доступности сразу нельзя - бот соглашается
 				{
 					Zones:           []string{"Zone_1", "Zone_3"},
@@ -157,7 +168,6 @@ func TestScheduleEvents(t *testing.T) {
 				c.WhiteList["Zone_1"] = append(c.WhiteList["Zone_1"], configuration.Window{StartHour: 23, EndHour: 24})
 				c.WhiteList["Zone_3"][0].StartHour = 0
 				c.WhiteList["Zone_3"] = append(c.WhiteList["Zone_3"], configuration.Window{StartHour: 23, EndHour: 24})
-				return
 			},
 		},
 		{
@@ -169,13 +179,34 @@ func TestScheduleEvents(t *testing.T) {
 				StartDate:       time.Date(2023, 04, 18, 23, 30, 0, 0, time.UTC), //18 апреля 23:30
 				DurationMinutes: 60,
 				Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-				WorkId:          "7",
+				WorkId:          "9",
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
+			UserMustApprove: true, //ожидаем разделение работ, т.к. есть пересечения с 1 и не выполняется min available zone
+			ExpectedVariants: []*models.WorkItem{ //предлагаем два свободных слота в 03:30 и 04:00, т.к. занять все зоны доступности сразу нельзя - бот соглашается
+				{
+					Zones:           []string{"Zone_1"},
+					StartDate:       time.Date(2023, 04, 18, 23, 30, 0, 0, time.UTC), //18 апреля 23:30
+					DurationMinutes: 60,
+					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+					WorkId:          "9",
+					Priority:        "regular",
+					WorkType:        "manual",
+				},
+				{
+					Zones:           []string{"Zone_3"},
+					StartDate:       time.Date(2023, 04, 19, 0, 30, 0, 0, time.UTC), //18 апреля 23:30
+					DurationMinutes: 60,
+					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+					WorkId:          "9",
+					Priority:        "regular",
+					WorkType:        "manual",
+				},
+			},
 		},
 		{
-			Name:       "10. Продление работ 1, 19 апреля 00:47",        // ожидаем отмену работ 2
+			Name:       "10. Продление работ 1, 19 апреля 00:47",
 			ActionTime: time.Date(2023, 04, 18, 23, 00, 0, 0, time.UTC), //18 апреля 00:47
 			Action:     "prolongate",
 			NewWork: &models.WorkItem{
@@ -187,7 +218,17 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
+			UserMustApprove: false, // ожидаем отмену работ 2. Не вернется UserMustApprove, потому что от пользователя не требуется подтверждений
 			ExpectedVariants: []*models.WorkItem{
+				{
+					Zones:           []string{"Zone_2", "Zone_4"},
+					StartDate:       time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
+					DurationMinutes: 120,
+					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+					WorkId:          "1",
+					Priority:        "regular",
+					WorkType:        "manual",
+				},
 				{
 					Zones:           []string{"Zone_1", "Zone_2"},
 					StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
@@ -217,25 +258,25 @@ func TestScheduleEvents(t *testing.T) {
 			var result []*models.WorkItem
 			//var errorIsUnexpected bool
 			var err error
-			var isExpected bool
+			var userMustApprove bool
 			switch e.Action {
 			case "add":
-				result, isExpected, err = scheduler.ScheduleWork(e.NewWork)
+				result, userMustApprove, err = scheduler.ScheduleWork(e.NewWork)
 			case "move":
-				result, isExpected, err = scheduler.MoveWork(e.NewWork)
+				result, userMustApprove, err = scheduler.MoveWork(e.NewWork)
 			case "prolongate":
-				result, isExpected, err = scheduler.MoveWork(e.NewWork)
+				result, userMustApprove, err = scheduler.MoveWork(e.NewWork)
 			case "config change":
 				e.ConfigChange(c.Data)
 			default:
 				t.Fatalf("%s: unexpected event action\n", e.Name)
 			}
 
-			if !e.IsExpectedError && err != nil {
+			if !e.UserMustApprove && err != nil {
 				t.Errorf("%s: unexpected error %v, %v\n", e.Name, err, result)
 			}
-			if e.IsExpectedError {
-				if !isExpected {
+			if e.UserMustApprove {
+				if !userMustApprove {
 					t.Errorf("%s: unexpected error %v, %v\n", e.Name, err, result)
 				} else {
 					fmt.Printf("%s: event processing return expected error %v\n", e.Name, err)
