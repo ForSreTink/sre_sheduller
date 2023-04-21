@@ -26,13 +26,13 @@ const create_indexes = (connection, dbName, worksCollectionName, zonesCollection
     printjson(result);
     checkIndexException(indexName, result)
     
-    indexName = 'workId unique'
+    indexName = 'workId'
     print("Create " + indexName + " index for " + worksCollectionName);
 	result = worksCollection.createIndex(
 		{ 'workId': 1 },
 		{
 			'name': 'workId',
-            'unique': true,
+            'unique': false,
 			'background': true
 		}
 	);
