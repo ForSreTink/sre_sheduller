@@ -77,10 +77,16 @@ func (sch *Scheduler) MoveWork(wi *models.WorkItem) (schedule []*models.WorkItem
 	}
 	//Критичные работы помещать в расписание вне очереди, принудительно отменяя обычные ручные работы и сжимая или перенося работы обычные автоматические.
 	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
-	schedule, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
+	newSchedule, wiChanges, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
+	}
+	if len(newSchedule) == 0 {
+		schedule = append(schedule, wi)
+	} else {
+		schedule = append(schedule, mergeWiZones(wiChanges)...)
+		schedule = append(schedule, newSchedule...)
 	}
 	return
 }
@@ -97,10 +103,16 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 	}
 	//Критичные работы помещать в расписание вне очереди, принудительно отменяя обычные ручные работы и сжимая или перенося работы обычные автоматические.
 	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
-	schedule, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
+	newSchedule, wiChanges, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
+	}
+	if len(newSchedule) == 0 {
+		schedule = append(schedule, wi)
+	} else {
+		schedule = append(schedule, mergeWiZones(wiChanges)...)
+		schedule = append(schedule, newSchedule...)
 	}
 	return
 }
@@ -115,81 +127,92 @@ func (sch *Scheduler) ProlongateWorkById(wi *models.WorkItem) (schedule []*model
 	if err != nil {
 		return
 	}
-	newSchedule, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, true, false)
+	newSchedule, _, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, true, false)
 	if zoneErr != nil {
 		errorIsUnexpected = false
 		err = zoneErr
 	}
+
+	//todo - check if we have problems in different zones
 	schedule = append(schedule, wi)
 	schedule = append(schedule, newSchedule...)
 	return
 }
 
-func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.WorkItem, move bool, cancelAuto bool, cancelManual bool) (schedule []*models.WorkItem, err error) {
+func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.WorkItem, move bool, cancelAuto bool, cancelManual bool) (schedule []*models.WorkItem, wiChanges map[string]*models.WorkItem, err error) {
 	hasFreeWindow := false
 	workItemInterval, err := getWorkInterval(wi)
 	if err != nil {
 		return
 	}
+	wiChanges = make(map[string]*models.WorkItem)
 
-	scheduleWIZone := make(map[string][]*models.WorkItem)
 	for _, z := range wi.Zones {
+		scheduleWIZone := []*models.WorkItem{}
+		wiCopyForThisZ := *wi
+		wiCopyForThisZ.Zones = []string{z}
+
 		// проверить black и white листы
 		_, zoneErr := sch.checkZoneLists(z, wi)
 		if zoneErr != nil {
 			err = zoneErr
 			return
 		}
-		// если пришло изменение работ, то надо удалить ранее сущестовавший айтем из списка сравнения
+		// если пришло изменение работ, то надо удалить ранее существовавший айтем из списка сравнения
 		tmp := zonesSchedule.scheduleByZones[z]
 		removed_cnt := 0
 		for i, s := range zonesSchedule.scheduleByZones[z] {
-			if s.Work.WorkId == wi.WorkId {
+			if s.Work.WorkId == wiCopyForThisZ.WorkId {
 				tmp[i-removed_cnt] = tmp[len(tmp)-1]
 				tmp = tmp[:len(tmp)-1]
 				removed_cnt++
 			}
 		}
 		zonesSchedule.scheduleByZones[z] = tmp
-		// проверить, нет ли работ в это время, если нет -> проверить min_avialable_zones
+		// проверить, нет ли работ в это время, если нет -> сдвиг, отмена и т.п. предложения
 		zoneScheduleByZone, ok := zonesSchedule.scheduleByZones[z]
-		if ok {
-			hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, *workItemInterval)
+
+		zoneWorkItemInterval := workItemInterval
+		for zoneWorkItemInterval.End().Before(wiCopyForThisZ.Deadline) {
+			if ok {
+				hasFreeWindow = checkZoneAvailabe(zoneScheduleByZone, *zoneWorkItemInterval)
+				if !hasFreeWindow {
+					//	todo по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
+					changes, moveErr := moveZoneAvailabe(zoneScheduleByZone, *zoneWorkItemInterval, move, cancelAuto, cancelManual)
+					if moveErr != nil || len(changes) == 0 {
+						err = moveErr
+						return
+					} else {
+						hasFreeWindow = true
+						scheduleWIZone = append(scheduleWIZone, changes...)
+					}
+					return
+				}
+			}
+			//min_avialable_zones вполняется -> 201 планируем
+			available_count := 0
+			for zwl := range sch.Config.WhiteList {
+				if checkZoneAvailabe(merge(zonesSchedule.scheduleByZones[zwl], scheduleWIZone), *workItemInterval) {
+					available_count++
+				}
+			}
+			if available_count > int(sch.Config.MinAvialableZones) {
+				wiCopyForThisZ.StartDate = zoneWorkItemInterval.Start()
+				wiChanges[z] = &wiCopyForThisZ
+				schedule = append(schedule, scheduleWIZone...)
+				break
+			} else { //min_avialable_zones не вполняется -> пробуем сдвинуть еще дальше
+				nextInterval, _ := interval.New(
+					zoneWorkItemInterval.End(),
+					zoneWorkItemInterval.End().Add(time.Duration(wiCopyForThisZ.DurationMinutes)*time.Minute))
+				zoneWorkItemInterval = &nextInterval
+				scheduleWIZone = []*models.WorkItem{}
+			}
 		}
 		if !hasFreeWindow {
-			//	todo по каждой зоне в течение дня считаем варианты: для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
-			changes, moveErr := moveZoneAvailabe(zoneScheduleByZone, *workItemInterval, move, cancelAuto, cancelManual)
-			if moveErr != nil || len(changes) == 0 {
-				err = moveErr
-				return
-			} else {
-				hasFreeWindow = true
-				scheduleWIZone[z] = append(scheduleWIZone[z], wi)
-				scheduleWIZone[z] = append(scheduleWIZone[z], changes...)
-			}
+			err = fmt.Errorf("unable to schedule work: interval alredy occupied an unable to move to any time before deadline")
 			return
 		}
-	}
-	if hasFreeWindow {
-		//min_avialable_zones вполняется -> 201 планируем
-		available_count := 0
-		for z := range sch.Config.WhiteList {
-			if checkZoneAvailabe(merge(zonesSchedule.scheduleByZones[z], scheduleWIZone[z]), *workItemInterval) {
-				available_count++
-			}
-		}
-		if available_count > int(sch.Config.MinAvialableZones) {
-			for _, i := range scheduleWIZone {
-				schedule = append(schedule, i...)
-			}
-
-		} else {
-			err = fmt.Errorf("unable to schedule work: should keep min available zones = %v", sch.Config.MinAvialableZones)
-			return
-		}
-	} else {
-		err = fmt.Errorf("unable to schedule work: interval alredy occupied")
-		return
 	}
 	return
 }
@@ -249,20 +272,20 @@ func (sch *Scheduler) getAllZonesSchedule(from time.Time, to time.Time) (zoneSch
 	return
 }
 
-func (s *Schedule) getWindowWorks(searchInterval interval.Span) (windows map[string][]*IntervalWork) {
-	windows = make(map[string][]*IntervalWork)
-	for z, works := range s.scheduleByZones {
-		for _, w := range works {
-			if w.Span.IsIntersection(searchInterval) {
-				windows[z] = append(windows[z], w)
-			}
-			if w.Span.Start().After(searchInterval.End()) {
-				break
-			}
-		}
-	}
-	return
-}
+// func (s *Schedule) getWindowWorks(searchInterval interval.Span) (windows map[string][]*IntervalWork) {
+// 	windows = make(map[string][]*IntervalWork)
+// 	for z, works := range s.scheduleByZones {
+// 		for _, w := range works {
+// 			if w.Span.IsIntersection(searchInterval) {
+// 				windows[z] = append(windows[z], w)
+// 			}
+// 			if w.Span.Start().After(searchInterval.End()) {
+// 				break
+// 			}
+// 		}
+// 	}
+// 	return
+// }
 
 func checkZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span) (available bool) {
 	available = true
@@ -388,6 +411,28 @@ func (sch *Scheduler) checkZoneLists(zone string, wi *models.WorkItem) (availavl
 		}
 	}
 	return
+}
+
+func mergeWiZones(wiChanges map[string]*models.WorkItem) []*models.WorkItem {
+	result := []*models.WorkItem{}
+	for z, wiCh := range wiChanges {
+		if len(result) == 0 {
+			result = append(result, wiCh)
+		} else {
+			appended := false
+			for _, res := range result {
+				if res.StartDate == wiCh.StartDate {
+					appended = true
+					res.Zones = append(res.Zones, z)
+					break
+				}
+			}
+			if !appended {
+				result = append(result, wiCh)
+			}
+		}
+	}
+	return result
 }
 
 func Max(x int32, y int32) int32 {

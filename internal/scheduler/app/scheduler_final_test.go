@@ -175,7 +175,7 @@ func TestScheduleEvents(t *testing.T) {
 			},
 		},
 		{
-			Name:       "10. Продление работ 1, 19 апреля 00:47",
+			Name:       "10. Продление работ 1, 19 апреля 00:47",        // ожидаем отмену работ 2
 			ActionTime: time.Date(2023, 04, 18, 23, 00, 0, 0, time.UTC), //18 апреля 00:47
 			Action:     "prolongate",
 			NewWork: &models.WorkItem{
@@ -187,12 +187,25 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
+			ExpectedVariants: []*models.WorkItem{
+				{
+					Zones:           []string{"Zone_1", "Zone_2"},
+					StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
+					DurationMinutes: 120,
+					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+					WorkId:          "2",
+					Priority:        "regular",
+					WorkType:        "manual",
+					Status:          "cancelled",
+				},
+			},
 		},
 	}
 
 	ctx := context.Background()
 	c := configuration.NewConfigurator(ctx, finalTestConfigName)
 	c.Run()
+	time.Sleep(2 * time.Second)
 
 	for i, e := range testEvents {
 		t.Run(e.Name, func(t *testing.T) {

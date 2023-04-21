@@ -68,6 +68,7 @@ func TestScheduleWorkSuccees(t *testing.T) {
 		ctx := context.Background()
 		c := configuration.NewConfigurator(ctx, unitTestConfigName)
 		c.Run()
+		time.Sleep(2 * time.Second)
 
 		scheduler := NewScheduler(ctx, rep, c)
 		result, _, err := scheduler.ScheduleWork(&testItem)
@@ -100,6 +101,7 @@ func TestDublicateScheduleWorkError(t *testing.T) {
 		ctx := context.Background()
 		c := configuration.NewConfigurator(ctx, "../../../config.yml")
 		c.Run()
+		time.Sleep(2 * time.Second)
 
 		scheduler := NewScheduler(ctx, rep, c)
 		result, _, err := scheduler.ScheduleWork(&testItem)
@@ -133,6 +135,7 @@ func TestProlongateWorkSuccees(t *testing.T) {
 		ctx := context.Background()
 		c := configuration.NewConfigurator(ctx, "../../../config.yml")
 		c.Run()
+		time.Sleep(2 * time.Second)
 
 		scheduler := NewScheduler(ctx, rep, c)
 		result, _, err := scheduler.ProlongateWorkById(&testItem)
