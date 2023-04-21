@@ -149,6 +149,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 
 	for _, z := range wi.Zones {
 		scheduleWIZone := []*models.WorkItem{}
+		plannedWI := []*IntervalWork{}
 		wiCopyForThisZ := *wi
 		wiCopyForThisZ.Zones = []string{z}
 
@@ -182,14 +183,34 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 		zonesSchedule.scheduleByZones[z] = tmp
 		// проверить, нет ли работ в это время, если нет -> сдвиг, отмена и т.п. предложения
 		zoneScheduleByZone, ok := zonesSchedule.scheduleByZones[z]
+		sugestedSchedule := zonesSchedule.scheduleByZones
 		if ok {
 			// для своей зоны - варианты сдвигов в рамках зоны педелах max_deadline_days, с учетом min_avialable_zones;
-			startTime, moveErr := moveToNextAvailable(zoneScheduleByZone, wi)
+			// добавляем все ранее просчитанное по прошлым зонам
+			if len(plannedWI) > 0 {
+				for _, p := range plannedWI {
+					for _, z := range p.Work.Zones {
+						sugestedSchedule[z] = append(sugestedSchedule[z], p)
+					}
+				}
+			}
+
+			startTime, moveErr := sch.moveToNextAvailable(sugestedSchedule, z, wi)
 			if moveErr == nil {
 				change := wi
 				change.StartDate = startTime
+				change.Zones = []string{z}
+				change.Status = StatusPlanned
 				scheduleWIZone = append(scheduleWIZone, change)
-				break
+
+				span, _ := getWorkInterval(change)
+				newIntervalWork := IntervalWork{
+					Work: change,
+					Span: span,
+				}
+				plannedWI = append(plannedWI, &newIntervalWork)
+				sugestedSchedule[z] = append(sugestedSchedule[z], &newIntervalWork)
+				continue
 			}
 		}
 		zoneWorkItemInterval, _ := interval.New(minStartDate, minStartDate.Add(time.Duration(wi.DurationMinutes)*time.Minute))
@@ -209,14 +230,11 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 					return
 				}
 			}
+
+			sugestedSchedule[z] = merge(sugestedSchedule[z], scheduleWIZone)
 			//min_avialable_zones вполняется -> 201 планируем
-			available_count := 0
-			for zwl := range sch.Config.WhiteList {
-				if checkZoneAvailabe(merge(zonesSchedule.scheduleByZones[zwl], scheduleWIZone), *workItemInterval) {
-					available_count++
-				}
-			}
-			if available_count > int(sch.Config.MinAvialableZones) {
+			ok := sch.checkMinAvailableZones(sugestedSchedule, workItemInterval)
+			if ok {
 				wiCopyForThisZ.StartDate = zoneWorkItemInterval.Start()
 				wiChanges[z] = &wiCopyForThisZ
 				schedule = append(schedule, scheduleWIZone...)
@@ -229,7 +247,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 			}
 		}
 		if !hasFreeWindow {
-			err = fmt.Errorf("unable to schedule work: interval alredy occupied an unable to move to any time before deadline")
+			err = fmt.Errorf("unable to schedule work: interval already occupied and unable to move to any time before deadline")
 			return
 		}
 	}
@@ -291,6 +309,16 @@ func (sch *Scheduler) getAllZonesSchedule(from time.Time, to time.Time) (zoneSch
 	return
 }
 
+func (sch *Scheduler) checkMinAvailableZones(allZonesSchedule map[string][]*IntervalWork, workItemInterval *interval.Span) (ok bool) {
+	available_count := 0
+	for z := range sch.Config.WhiteList {
+		if checkZoneAvailabe(allZonesSchedule[z], *workItemInterval) {
+			available_count++
+		}
+	}
+	return available_count > int(sch.Config.MinAvialableZones)
+}
+
 // func (s *Schedule) getWindowWorks(searchInterval interval.Span) (windows map[string][]*IntervalWork) {
 // 	windows = make(map[string][]*IntervalWork)
 // 	for z, works := range s.scheduleByZones {
@@ -318,18 +346,36 @@ func checkZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span
 	return
 }
 
-func moveToNextAvailable(zoneSchedule []*IntervalWork, wi *models.WorkItem) (startTime time.Time, err error) {
-	for intervalIndex := 0; intervalIndex < len(zoneSchedule); intervalIndex++ {
-		sugestedInterval := wi.Deadline.Sub(zoneSchedule[intervalIndex].Span.End())
-		if intervalIndex < len(zoneSchedule)-1 {
-			sugestedInterval = zoneSchedule[intervalIndex+1].Span.Start().Sub(zoneSchedule[intervalIndex].Span.End())
+func (sch *Scheduler) moveToNextAvailable(sugestedAllZonesSchedule map[string][]*IntervalWork, currentZone string, wi *models.WorkItem) (startTime time.Time, err error) {
+	zoneSchedule, ok := sugestedAllZonesSchedule[currentZone]
+	if !ok {
+		err = fmt.Errorf("moveToNextAvailable error currentZone %v not found in sugestedAllZonesSchedule", currentZone)
+		return
+	}
+	sort.Slice(zoneSchedule, func(i, j int) bool {
+		return zoneSchedule[i].Work.StartDate.Before(zoneSchedule[j].Work.StartDate)
+	})
+	sugestedStartTime := wi.StartDate
+	sugestedEndTime := sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
+	for sugestedEndTime.Before(wi.Deadline) {
+		moved := false
+		for _, zi := range zoneSchedule {
+			if zi.Span.Start().Before(sugestedEndTime) && zi.Span.End().After(sugestedStartTime) {
+				sugestedStartTime = zi.Span.End()
+				sugestedEndTime = sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
+				moved = true
+				break
+			}
+		}
+		if moved {
+			continue
 		}
 
-		if sugestedInterval > (time.Duration(wi.DurationMinutes) * time.Minute) {
-			startTime = zoneSchedule[intervalIndex].Span.End()
-			checkInterval, _ := interval.New(startTime, startTime.Add(time.Duration(wi.DurationMinutes)*time.Minute))
-			hasFreeWindow := checkZoneAvailabe(zoneSchedule, checkInterval)
-			if hasFreeWindow {
+		checkInterval, _ := interval.New(sugestedStartTime, sugestedEndTime)
+		hasFreeWindow := checkZoneAvailabe(zoneSchedule, checkInterval)
+		if hasFreeWindow {
+			minIntervalOk := sch.checkMinAvailableZones(sugestedAllZonesSchedule, &checkInterval)
+			if minIntervalOk {
 				return
 			}
 		}
@@ -378,6 +424,7 @@ func createMovement(zoneSchedule []*IntervalWork, checkInterval interval.Span) (
 				return
 			}
 			last_interval = *inter.Span
+			inter.Work.Status = StatusPlanned
 			changes = append(changes, inter.Work)
 		} else {
 			break

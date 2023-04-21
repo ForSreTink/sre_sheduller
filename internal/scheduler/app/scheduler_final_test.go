@@ -279,7 +279,7 @@ func TestScheduleEvents(t *testing.T) {
 				if !userMustApprove {
 					t.Errorf("%s: unexpected error %v, %v\n", e.Name, err, result)
 				} else {
-					fmt.Printf("%s: event processing return expected error %v\n", e.Name, err)
+					fmt.Printf("%s: event processing return userMustApprove\n", e.Name)
 				}
 				if len(e.ExpectedVariants) > 0 {
 					if len(e.ExpectedVariants) != len(result) {
