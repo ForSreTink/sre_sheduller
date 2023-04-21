@@ -251,13 +251,8 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 					if ok {
 						plannedWI[moreAvailable].Work.Zones = tryWi.Zones
 						sugestedSchedule[z] = append(sugestedSchedule[z], &newIntervalWork)
-
-						// tryWi.Zones = []string{z}
-						// scheduleWIZone = append(scheduleWIZone, &tryWi)
-						// schedule = append(schedule, scheduleWIZone...)
 						continue
 					}
-
 				}
 			}
 
