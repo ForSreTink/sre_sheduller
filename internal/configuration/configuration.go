@@ -196,7 +196,7 @@ func (c *Configurator) validateConfig(conf Config) error {
 		if matches := validTimeCompressionPercents.FindStringSubmatch(conf.TimeCompressionPercents); len(matches) > 0 {
 			subgroup := validTimeCompressionPercents.SubexpIndex("num")
 			numValue, _ := strconv.ParseFloat(matches[subgroup], 32)
-			conf.TimeCompressionRate = float32(numValue) / float32(100)
+			conf.TimeCompressionRate = 1 - (float32(numValue) / float32(100))
 		} else {
 			errStr += fmt.Sprintf("invalid time_compression_persents value in config: [%s]", conf.TimeCompressionPercents)
 		}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 
+	"workScheduler/internal/actualizer"
 	api "workScheduler/internal/api/app"
 	"workScheduler/internal/configuration"
 	handlers "workScheduler/internal/handlers"
@@ -48,6 +49,9 @@ func (s *Server) Run() error {
 	if err != nil {
 		return err
 	}
+
+	a := actualizer.NewActualizer(data)
+	a.Run(s.Ctx)
 
 	// data := inmemoryrepository.NewInmemoryRepository()
 	scheduler := app.NewScheduler(s.Ctx, data, s.Config)
