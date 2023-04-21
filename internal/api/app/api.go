@@ -299,14 +299,14 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 		return
 	}
 
-	works, needUserApprove, err := a.Scheduller.MoveWork(work)
-	if err != nil {
-		if needUserApprove {
-			a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})
-		}
-		a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
-		return
-	}
+	// works, needUserApprove, err := a.Scheduller.MoveWork(works)
+	// if err != nil {
+	// 	if needUserApprove {
+	// 		a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})
+	// 	}
+	// 	a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
+	// 	return
+	// }
 
 	for _, work := range works {
 		_, err = a.RepoData.Update(r.Context(), work)
@@ -371,15 +371,15 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 		return
 	}
 
-	works, needUserApprove, err := a.Scheduller.ProlongateWorkById(work)
-	if needUserApprove {
-		a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
-		return
-	}
-	if err != nil {
-		a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})
-		return
-	}
+	// works, needUserApprove, err := a.Scheduller.ProlongateWorkById(work)
+	// if needUserApprove {
+	// 	a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
+	// 	return
+	// }
+	// if err != nil {
+	// 	a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})
+	// 	return
+	// }
 
 	updatedWorks := []*models.WorkItem{}
 

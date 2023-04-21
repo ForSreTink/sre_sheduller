@@ -1,0 +1,14 @@
+<tr>
+{{ range $zone, $items := . }}
+<td>{{$zone}}</td>
+{{ range $idx, $item := $items }}
+{{ range $day, $hours := $item }}
+{{ range $hour, $minutes := $hours }}
+{{ range $minute, $value := $minutes }}
+<td>{{$value}}</td>
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
+</tr>
