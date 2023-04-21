@@ -22,7 +22,7 @@ type Hour struct {
 	Minutes []Minute
 }
 
-type Date struct {
+type Work struct {
 	Hours []Hour
 }
 
@@ -53,8 +53,8 @@ func NewTeplateData(ts time.Time) TemplateData {
 		hours := []Hour{}
 		for i := 0; i < 24; i++ {
 			minutes := []Minute{}
-			for j := 0; j < 60; j++ {
-				minute := Minute{Value: "#000000"}
+			for j := 0; j < 30; j++ {
+				minute := Minute{Value: "#FFFFFF"}
 				minutes = append(minutes, minute)
 			}
 			hour := Hour{
@@ -68,13 +68,13 @@ func NewTeplateData(ts time.Time) TemplateData {
 	return tmpl
 }
 
-func (tmpl *Template) Generate(w http.ResponseWriter, r *http.Request) {
+func (t *Template) Generate(w http.ResponseWriter, r *http.Request) {
 	ts := time.Now()
-	startDate := ts.AddDate(0, 0, 2)
-	endDate := ts.AddDate(0, 0, -2)
+	startDate := ts.AddDate(0, 0, -2)
+	endDate := ts.AddDate(0, 0, 2)
 	tmpls := map[string][]TemplateData{}
 
-	works, err := tmpl.Data.List(r.Context(), startDate, endDate, []string{}, []string{})
+	works, err := t.Data.List(r.Context(), startDate, endDate, []string{}, []string{})
 	if err != nil {
 		log.Printf("ERROR: Can't generate template for '/' request, %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -84,12 +84,13 @@ func (tmpl *Template) Generate(w http.ResponseWriter, r *http.Request) {
 		for _, zone := range work.Zones {
 			startDate := work.StartDate
 			duration := work.DurationMinutes
+			tmp := NewTeplateData(ts)
+			tmp.WorkId = work.WorkId
 
-			for i := duration; i > 0; i-- {
+			for i := duration; i > 0; i -= 2 {
 				day := startDate.Format(time.DateOnly)
 				hour := startDate.Hour()
-				minute := startDate.Minute()
-				tmp := NewTeplateData(ts)
+				minute := startDate.Minute() / 2
 				if work.Status == "canceled" {
 					tmp.Date[day][hour].Minutes[minute].Value = "#DCDCDC"
 				} else if work.Status == "in_progress" {
@@ -99,17 +100,17 @@ func (tmpl *Template) Generate(w http.ResponseWriter, r *http.Request) {
 				} else {
 					tmp.Date[day][hour].Minutes[minute].Value = "#32CD32"
 				}
-				tmpls[zone] = append(tmpls[zone], tmp)
-				startDate = startDate.Add(1 * time.Minute)
+				startDate = startDate.Add(2 * time.Minute)
 			}
+			tmpls[zone] = append(tmpls[zone], tmp)
 		}
-		tmpl := template.Must(template.ParseFiles("template.html"))
-		err := tmpl.Execute(w, tmpls)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-		}
-		mrshl, err := json.Marshal(tmpl)
-		fmt.Println(string(mrshl))
 	}
+	tmpl := template.Must(template.ParseFiles("template.html"))
+	err = tmpl.Execute(w, tmpls)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+	mrshl, err := json.Marshal(tmpls)
+	fmt.Println(string(mrshl))
 }
