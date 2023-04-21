@@ -99,7 +99,7 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	if work.StartDate.Minute()%5 != 0 && work.WorkType == "manual" {
 		errStr += "Manual work started time must be multiple by 5 minutes; "
 	}
-	if work.StartDate.Minute()%1 != 0 && work.WorkType == "automatic" {
+	if work.StartDate.Second() != 0 && work.StartDate.Nanosecond() != 0 {
 		errStr += "Automatic work started time must be multiple by 1 minutes; "
 	}
 
@@ -242,7 +242,7 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 		return
 	}
 
-	for idx, _ := range works {
+	for idx := range works {
 		works[idx].Status = "cancelled"
 		works[idx], err = a.RepoData.Update(r.Context(), works[idx])
 		if err != nil {
@@ -299,14 +299,14 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 		return
 	}
 
-	// works, needUserApprove, err := a.Scheduller.MoveWork(works)
-	// if err != nil {
-	// 	if needUserApprove {
-	// 		a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})
-	// 	}
-	// 	a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
-	// 	return
-	// }
+	works, needUserApprove, err := a.Scheduller.MoveWork(works)
+	if err != nil {
+		if needUserApprove {
+			a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})
+		}
+		a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
+		return
+	}
 
 	for _, work := range works {
 		_, err = a.RepoData.Update(r.Context(), work)
@@ -371,15 +371,15 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 		return
 	}
 
-	// works, needUserApprove, err := a.Scheduller.ProlongateWorkById(work)
-	// if needUserApprove {
-	// 	a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
-	// 	return
-	// }
-	// if err != nil {
-	// 	a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})
-	// 	return
-	// }
+	works, needUserApprove, err := a.Scheduller.ProlongateWorkById(works)
+	if needUserApprove {
+		a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err.Error(), works)
+		return
+	}
+	if err != nil {
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err.Error(), []*models.WorkItem{})
+		return
+	}
 
 	updatedWorks := []*models.WorkItem{}
 
