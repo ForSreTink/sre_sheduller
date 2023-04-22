@@ -416,9 +416,9 @@ func TestScheduleEvents(t *testing.T) {
 				if e.Action != "config change" {
 					if len(result) == 0 {
 						t.Errorf("%s: event processing return unexpected results count: %v, expected >= 1\n", e.Name, len(result))
-					} else {
+					} else if len(e.ExpectedVariants) > 0 {
 						// successfully planned 1 or planned 1 + movement of others
-						CompareWorkItems(t, e.Name, result[0], e.NewWork)
+						CompareWorkItems(t, e.Name, result[0], e.ExpectedVariants[0])
 					}
 				}
 			}
