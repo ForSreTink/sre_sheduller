@@ -78,6 +78,9 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	if inArray(work.Zones, a.Config.Data.BlackList) && work.Priority != "critical" {
 		errStr += "Can't schedule work for zone in blacklist , excepted critical work; "
 	}
+	if inArray(a.Config.Data.BlackList, work.Zones) && work.Priority != "critical" {
+		errStr += "Can't schedule work for zone in blacklist, excepted critical work; "
+	}
 	if !inWhiteList(a.Config.Data.WhiteList, work.Zones) && work.Priority != "critical" {
 		errStr += "Can't schedule work for zone not in whitelist, excepted critical work; "
 	}

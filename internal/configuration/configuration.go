@@ -36,8 +36,10 @@ type Config struct {
 }
 
 type Window struct {
-	StartHour uint32 `yaml:"start_hour"`
-	EndHour   uint32 `yaml:"end_hour"`
+	StartHour         string `yaml:"start_hour"`
+	EndHour           string `yaml:"end_hour"`
+	StartHourDuration time.Duration
+	EndHourDuration   time.Duration
 }
 
 type WorkDurationSettings struct {
@@ -131,6 +133,25 @@ func (c *Configurator) readConfig() (config Config, err error) {
 		return
 	}
 
+	for name := range config.WhiteList {
+		for idx := range config.WhiteList[name] {
+			startString := config.WhiteList[name][idx].StartHour
+			endString := config.WhiteList[name][idx].EndHour
+
+			startDuration, errParse := time.Parse("15:04", startString)
+			if errParse != nil {
+				err = errParse
+				return
+			}
+			endDuration, errParse := time.Parse("15:04", endString)
+			if errParse != nil {
+				err = errParse
+				return
+			}
+			config.WhiteList[name][idx].StartHourDuration = time.Duration(startDuration.Unix())
+			config.WhiteList[name][idx].EndHourDuration = time.Duration(endDuration.Unix())
+		}
+	}
 	return
 }
 
@@ -142,16 +163,16 @@ func (c *Configurator) validateConfig(conf *Config) error {
 		zones[name] = ts
 		additionalIntervals := []Window{}
 		for i, interval := range zone {
-			if interval.StartHour >= 24 {
+			if interval.StartHourDuration >= 24 {
 				errStr += "start_hour must be uint in range from 0 to 23; "
 			}
-			if interval.EndHour >= 24 {
+			if interval.EndHourDuration >= 24 {
 				errStr += "EndHour must be uint in range from 1 to 23; "
 			}
-			if interval.StartHour >= interval.EndHour {
+			if interval.StartHourDuration >= interval.EndHourDuration {
 				// add new interval above 00:00
-				additionalIntervals = append(additionalIntervals, Window{StartHour: 0, EndHour: interval.EndHour})
-				conf.WhiteList[name][i].EndHour = 24
+				additionalIntervals = append(additionalIntervals, Window{StartHourDuration: 0, EndHourDuration: interval.EndHourDuration})
+				conf.WhiteList[name][i].EndHourDuration = 24 * time.Hour
 			}
 		}
 		conf.WhiteList[name] = append(zone, additionalIntervals...)
