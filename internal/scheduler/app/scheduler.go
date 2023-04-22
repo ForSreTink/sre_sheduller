@@ -54,8 +54,7 @@ func NewScheduler(ctx context.Context, repository repository.ReadRepository, con
 	return
 }
 
-func (sch *Scheduler) MoveWork(wis []*models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
-	errorIsUnexpected = true
+func (sch *Scheduler) MoveWork(wis []*models.WorkItem) (schedule []*models.WorkItem, userMustApprove bool, err error) {
 	sort.Slice(wis, func(i, j int) bool {
 		return wis[i].StartDate.Before(wis[j].StartDate)
 	})
@@ -80,23 +79,23 @@ func (sch *Scheduler) MoveWork(wis []*models.WorkItem) (schedule []*models.WorkI
 	//Критичные работы помещать в расписание вне очереди, принудительно отменяя обычные ручные работы и сжимая или перенося работы обычные автоматические.
 	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
 	for _, wi := range wis {
-		newSchedule, wiChanges, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
+		newSchedule, mustApprove, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 		if zoneErr != nil {
-			errorIsUnexpected = false
+			userMustApprove = mustApprove
 			err = zoneErr
 		}
-		if len(newSchedule) == 0 {
-			schedule = append(schedule, wis...)
-		} else {
-			schedule = append(schedule, mergeWiZones(wiChanges)...)
+		if len(newSchedule) != 0 {
+			if len(newSchedule) > 1 {
+				userMustApprove = true
+			}
 			schedule = append(schedule, newSchedule...)
 		}
 	}
 	return
 }
 
-func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.WorkItem, needUserApprove bool, err error) {
-	needUserApprove = false
+func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.WorkItem, userMustApprove bool, err error) {
+	userMustApprove = false
 	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
 	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
@@ -107,21 +106,23 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 	}
 	//Критичные работы помещать в расписание вне очереди, принудительно отменяя обычные ручные работы и сжимая или перенося работы обычные автоматические.
 	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
-	newSchedule, wiChanges, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
+	newSchedule, mustApprove, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
 		err = zoneErr
 	}
-	if len(newSchedule) == 0 {
-		schedule = append(schedule, wi)
-	} else {
-		schedule = append(schedule, mergeWiZones(wiChanges)...)
+	if len(newSchedule) != 0 {
+		userMustApprove = mustApprove
+		if len(newSchedule) > 1 {
+			userMustApprove = true
+		}
+		// schedule = append(schedule, mergeWiZones(wiChanges)...)
 		schedule = append(schedule, newSchedule...)
 	}
 	return
 }
 
-func (sch *Scheduler) ProlongateWorkById(wis []*models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
-	errorIsUnexpected = true
+func (sch *Scheduler) ProlongateWorkById(wis []*models.WorkItem) (schedule []*models.WorkItem, userMustApprove bool, err error) {
+	userMustApprove = true
 	sort.Slice(wis, func(i, j int) bool {
 		return wis[i].StartDate.Before(wis[j].StartDate)
 	})
@@ -135,26 +136,31 @@ func (sch *Scheduler) ProlongateWorkById(wis []*models.WorkItem) (schedule []*mo
 	}
 
 	for _, wi := range wis {
-		newSchedule, _, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, true, false)
+		newSchedule, userApprove, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, true, false)
 		if zoneErr != nil {
-			errorIsUnexpected = false
+			userMustApprove = false
 			err = zoneErr
 		}
 
-		//todo - check if we have problems in different zones
-		schedule = append(schedule, wi)
-		schedule = append(schedule, newSchedule...)
+		if len(newSchedule) != 0 {
+			userMustApprove = userApprove
+			if len(newSchedule) > 1 {
+				userMustApprove = true
+			}
+			// schedule = append(schedule, mergeWiZones(wiChanges)...)
+			schedule = append(schedule, newSchedule...)
+		}
 	}
 	return
 }
 
-func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.WorkItem, move bool, cancelAuto bool, cancelManual bool) (schedule []*models.WorkItem, wiChanges map[string]*models.WorkItem, err error) {
+func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.WorkItem, move bool, cancelAuto bool, cancelManual bool) (schedule []*models.WorkItem, userMustApprove bool, err error) {
 	hasFreeWindow := false
 	workItemInterval, err := getWorkInterval(wi)
 	if err != nil {
 		return
 	}
-	wiChanges = make(map[string]*models.WorkItem)
+	// wiChanges = make(map[string]*models.WorkItem)
 	plannedWI := []*IntervalWork{}
 	intervalAvailabilityForPlanned := [][]string{}
 
@@ -182,6 +188,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 				return
 			}
 			minStartDate = date
+			userMustApprove = true
 		}
 		// если пришло изменение работ, то надо удалить ранее существовавший айтем из списка сравнения
 		tmp := zonesSchedule.scheduleByZones[z]
@@ -199,6 +206,9 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 		if zi == 0 && len(wi.Zones) > 1 {
 			startTime, _, moveErr := sch.moveToNextAvailable(zonesSchedule.scheduleByZones, "", wi)
 			if moveErr == nil {
+				if wi.StartDate != startTime {
+					userMustApprove = true
+				}
 				change := wi
 				change.StartDate = startTime
 				change.Status = StatusPlanned
@@ -250,6 +260,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 					if ok {
 						plannedWI[moreAvailable].Work.Zones = tryWi.Zones
 						sugestedSchedule[z] = append(sugestedSchedule[z], &newIntervalWork)
+						userMustApprove = true
 						continue
 					}
 				}
@@ -273,6 +284,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 				intervalAvailabilityForPlanned = append(intervalAvailabilityForPlanned, availableInZones)
 				sugestedSchedule[z] = append(sugestedSchedule[z], &newIntervalWork)
 				schedule = append(schedule, scheduleWIZone...)
+				userMustApprove = true
 				continue
 			}
 		}
@@ -292,6 +304,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 						hasFreeWindow = true
 						scheduleWIZone = append(scheduleWIZone, changes...)
 						schedule = append(schedule, scheduleWIZone...)
+						userMustApprove = true
 					}
 					return
 				}
@@ -302,7 +315,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 			ok, _ := sch.checkMinAvailableZones(sugestedSchedule, workItemInterval)
 			if ok {
 				wiCopyForThisZ.StartDate = zoneWorkItemInterval.Start()
-				wiChanges[z] = &wiCopyForThisZ
+				userMustApprove = true
 				schedule = append(schedule, scheduleWIZone...)
 				break
 			} else { //min_avialable_zones не вполняется -> пробуем сдвинуть еще дальше
@@ -623,27 +636,27 @@ func (sch *Scheduler) getNearestZoneWindowStart(zone string, wi *models.WorkItem
 	return
 }
 
-func mergeWiZones(wiChanges map[string]*models.WorkItem) []*models.WorkItem {
-	result := []*models.WorkItem{}
-	for z, wiCh := range wiChanges {
-		if len(result) == 0 {
-			result = append(result, wiCh)
-		} else {
-			appended := false
-			for _, res := range result {
-				if res.StartDate == wiCh.StartDate {
-					appended = true
-					res.Zones = append(res.Zones, z)
-					break
-				}
-			}
-			if !appended {
-				result = append(result, wiCh)
-			}
-		}
-	}
-	return result
-}
+// func mergeWiZones(wiChanges map[string]*models.WorkItem) []*models.WorkItem {
+// 	result := []*models.WorkItem{}
+// 	for z, wiCh := range wiChanges {
+// 		if len(result) == 0 {
+// 			result = append(result, wiCh)
+// 		} else {
+// 			appended := false
+// 			for _, res := range result {
+// 				if res.StartDate == wiCh.StartDate {
+// 					appended = true
+// 					res.Zones = append(res.Zones, z)
+// 					break
+// 				}
+// 			}
+// 			if !appended {
+// 				result = append(result, wiCh)
+// 			}
+// 		}
+// 	}
+// 	return result
+// }
 
 func copyIntervalWork(m map[string][]*IntervalWork) (copy map[string][]*IntervalWork) {
 	copy = make(map[string][]*IntervalWork)
