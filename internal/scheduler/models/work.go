@@ -16,9 +16,9 @@ type WorkItem struct {
 	Status           string    `bson:"status,omitempty" json:"status,omitempty"`
 	WorkType         string    `bson:"workType,omitempty" json:"workType"`
 	Zones            []string  `bson:"zones,omitempty" json:"zones"`
-	CompressionRate  float32   `bson:"compressionRate,omitempty" json:"compressionRate,omitempty"`
-	InitialDuration  int32     `bson:"initialDuration,omitempty" json:"initialDuration,omitempty"`
-	InitialStartDate time.Time `bson:"initialStartDate,omitempty" json:"initialStartDate,omitempty"`
+	CompressionRate  float32   `bson:"compressionRate,omitempty" json:"-"`
+	InitialDuration  int32     `bson:"initialDuration,omitempty" json:"-"`
+	InitialStartDate time.Time `bson:"initialStartDate,omitempty" json:"-"`
 }
 
 func (w *WorkItem) EndTime() time.Time {

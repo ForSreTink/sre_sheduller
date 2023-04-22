@@ -188,6 +188,9 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 	}
 
 	work.Id = ""
+	work.InitialDuration = work.DurationMinutes
+	work.InitialStartDate = work.StartDate
+	work.CompressionRate = 1
 
 	works, needUserApprove, err := a.Scheduller.ScheduleWork(work)
 	if needUserApprove {
@@ -199,13 +202,16 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	added_work := []*models.WorkItem{}
+
 	for _, work := range works {
-		if work.Id != "" {
-			_, err := a.RepoData.Add(r.Context(), work)
+		if work.Id == "" {
+			work, err := a.RepoData.Add(r.Context(), work)
 			if err != nil {
 				a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 				return
 			}
+			added_work = append(added_work, work...)
 		} else {
 			_, err := a.RepoData.Update(r.Context(), work)
 			if err != nil {
@@ -214,8 +220,14 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	work_b, err := json.Marshal(added_work)
+	if err != nil {
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
+		return
+	}
 
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
+	w.Write(work_b)
 }
 
 func (a *Api) GetWorkById(w http.ResponseWriter, r *http.Request, workId string) {

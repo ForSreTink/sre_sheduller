@@ -23,8 +23,12 @@ paths:
               $ref: '#/components/schemas/postWork'
         required: true
       responses:
-        '201':
-          description: Succesfull created
+        '200':
+          description: Succesfull
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/works'
         '400':
           description: Bad request
           content:

@@ -26,7 +26,7 @@
             {{ range $day, $hours := $item.Date }}
                 {{ range $hour, $minutes := $hours }}
                     {{ range $minute, $value := $minutes.Minutes }}
-                <td style="background-color: {{$value.Value}};"></td>
+                <td style="background-color: {{$value.Value}};">*</td>
                     {{ end }}
                 {{ end }}
             {{ end }}
