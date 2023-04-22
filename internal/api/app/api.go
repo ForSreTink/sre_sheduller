@@ -10,6 +10,8 @@ import (
 	"workScheduler/internal/repository"
 	"workScheduler/internal/scheduler/app"
 	"workScheduler/internal/scheduler/models"
+
+	"github.com/google/uuid"
 )
 
 type Api struct {
@@ -100,7 +102,7 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 		errStr += "Manual work started time must be multiple by 5 minutes; "
 	}
 	if work.StartDate.Second() != 0 && work.StartDate.Nanosecond() != 0 {
-		errStr += "Automatic work started time must be multiple by 1 minutes; "
+		errStr += "Work started time must be multiple by 1 minutes; "
 	}
 
 	if errStr != "" {
@@ -187,6 +189,7 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	work.WorkId = uuid.New().String()
 	work.InitialDuration = work.DurationMinutes
 	work.InitialStartDate = work.StartDate
 	work.CompressionRate = 1
