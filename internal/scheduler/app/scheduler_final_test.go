@@ -283,6 +283,8 @@ func TestScheduleFinalEvents(t *testing.T) {
 			rep := RepositoryMock{
 				ListResult: e.ExpectedInDb,
 			}
+			e.NewWork.InitialDuration = e.NewWork.DurationMinutes
+			e.NewWork.InitialStartDate = e.NewWork.StartDate
 			scheduler := NewScheduler(ctx, rep, c)
 			var result []*models.WorkItem
 			//var errorIsUnexpected bool
