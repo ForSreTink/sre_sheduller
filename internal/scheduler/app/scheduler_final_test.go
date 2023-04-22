@@ -12,23 +12,10 @@ import (
 )
 
 const (
-	preFinalTestConfigName = "../test_configs/scheduler_pre_final_config.yml"
+	finalTestConfigName = "../test_configs/scheduler_final_config.yml"
 )
 
-type TestEvent struct {
-	Name                  string
-	ExpectedInDb          []*models.WorkItem
-	AppendToExpectedInDb  []*models.WorkItem
-	NewWork               *models.WorkItem
-	Action                string
-	ActionTime            time.Time
-	UserMustApprove       string
-	ExpectedVariants      []*models.WorkItem
-	ExpectedErrorContains string
-	ConfigChange          func(*configuration.Config)
-}
-
-func TestScheduleEvents(t *testing.T) {
+func TestScheduleFinalEvents(t *testing.T) {
 
 	testEvents := []TestEvent{
 		{
@@ -342,7 +329,7 @@ func TestScheduleEvents(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	c := configuration.NewConfigurator(ctx, preFinalTestConfigName)
+	c := configuration.NewConfigurator(ctx, finalTestConfigName)
 	c.Run()
 	time.Sleep(2 * time.Second)
 
@@ -440,32 +427,5 @@ func TestScheduleEvents(t *testing.T) {
 
 			}
 		})
-	}
-}
-
-func CompareWorkItems(t *testing.T, testName string, result *models.WorkItem, expected *models.WorkItem) {
-	if result.Id != expected.Id {
-		t.Errorf("%s: unexpected result Id: %v, expected %v\n", testName, result, expected)
-	}
-	if result.StartDate != expected.StartDate {
-		t.Errorf("%s: unexpected result StartDate: %v, expected %v\n", testName, result, expected)
-	}
-
-	if len(expected.Zones) != len(result.Zones) {
-		t.Errorf("%s: unexpected zones count in result: %v, expected %v\n", testName, result, expected)
-	} else {
-		sort.Slice(result.Zones, func(x, y int) bool {
-			return result.Zones[x] < result.Zones[y]
-		})
-		sort.Slice(expected.Zones, func(x, y int) bool {
-			return expected.Zones[x] < expected.Zones[y]
-		})
-
-		for j, zone := range result.Zones {
-			if zone != expected.Zones[j] {
-				t.Errorf("%s: unexpected zone names in result: %v, expected %v\n", testName, result, expected)
-				break
-			}
-		}
 	}
 }
