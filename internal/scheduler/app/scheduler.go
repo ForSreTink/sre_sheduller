@@ -437,48 +437,40 @@ func checkZoneAvailabe(zoneSchedule []*IntervalWork, checkInterval interval.Span
 }
 
 func (sch *Scheduler) moveToNextAvailable(sugestedAllZonesSchedule map[string][]*IntervalWork, currentZone string, wi *models.WorkItem) (startTime time.Time, availableInZones []string, err error) {
+	zoneSchedule, ok := sugestedAllZonesSchedule[currentZone]
 	if currentZone != "" {
-		_, ok := sugestedAllZonesSchedule[currentZone]
 		if !ok {
 			err = fmt.Errorf("moveToNextAvailable error currentZone %v not found in sugestedAllZonesSchedule", currentZone)
 			return
 		}
+	} else {
+		for _, zs := range sugestedAllZonesSchedule {
+			zoneSchedule = append(zoneSchedule, zs...)
+		}
 	}
-	var resultZoneSchedule []*IntervalWork
+
+	// сортируем по startDate
+	sort.Slice(zoneSchedule, func(i, j int) bool {
+		return zoneSchedule[i].Work.StartDate.Before(zoneSchedule[j].Work.StartDate)
+	})
 	sugestedStartTime := wi.StartDate
 	sugestedEndTime := sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
 	for sugestedEndTime.Before(wi.Deadline) {
 		moved := false
-		// проверяем интервал работ на предмет пересечения с работами в зоне
 		checkInterval, _ := interval.New(sugestedStartTime, sugestedEndTime)
-		for z, zoneSchedule := range sugestedAllZonesSchedule {
-
-			if currentZone == "" || currentZone == z {
-				// сортируем по startDate
-				sort.Slice(zoneSchedule, func(i, j int) bool {
-					return zoneSchedule[i].Work.StartDate.Before(zoneSchedule[j].Work.StartDate)
-				})
-				resultZoneSchedule = append(resultZoneSchedule, zoneSchedule...)
-				for _, zi := range zoneSchedule {
-					pause := sch.Config.PausesMinutes[z]
-					zoneCheckInterval, _ := interval.New(
-						checkInterval.Start().Add(time.Duration(-1*pause)),
-						checkInterval.End().Add(time.Duration(pause)))
-					if zi.Span.IsIntersection(zoneCheckInterval) {
-						sugestedStartTime = zi.Span.End()
-						/// TODO поиск начала интервала сободного времени
-						sugestedEndTime = sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
-						moved = true
-						break
-					}
-				}
+		for _, zi := range zoneSchedule {
+			if zi.Span.IsIntersection(checkInterval) {
+				sugestedStartTime = zi.Span.End()
+				sugestedEndTime = sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
+				moved = true
+				break
 			}
 		}
 		if moved {
 			continue
 		}
 
-		hasFreeWindow := checkZoneAvailabe(resultZoneSchedule, checkInterval)
+		hasFreeWindow := checkZoneAvailabe(zoneSchedule, checkInterval)
 		if hasFreeWindow {
 			resultSchedule := copyIntervalWork(sugestedAllZonesSchedule)
 			sort.Slice(wi.Zones, func(i, j int) bool {
@@ -505,7 +497,6 @@ func (sch *Scheduler) moveToNextAvailable(sugestedAllZonesSchedule map[string][]
 }
 
 func moveOrCancelOthers(zoneSchedule []*IntervalWork, checkInterval interval.Span, move bool, cancelAuto bool, cancelManual bool) (changes []*models.WorkItem, err error) {
-	// TODO Pauses
 	for _, interv := range zoneSchedule {
 		if interv.Span.IsIntersection(checkInterval) {
 			if (cancelManual && interv.Work.WorkType == WorkTypeManual) || (cancelAuto && interv.Work.WorkType == WorkTypeAutomatic) {
@@ -537,8 +528,6 @@ func createMovement(zoneSchedule []*IntervalWork, checkInterval interval.Span) (
 	// 	return zoneSchedule[i].Work.StartDate.Before(zoneSchedule[j].Work.StartDate)
 	// })
 	last_interval := checkInterval
-
-	// TODO Pauses
 	for _, inter := range zoneSchedule {
 		if last_interval.Start().Before(inter.Span.Start()) && last_interval.End().After(inter.Span.Start()) {
 			inter.Work.StartDate = last_interval.End()
