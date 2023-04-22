@@ -4,21 +4,23 @@ import (
 	"fmt"
 	"time"
 	"workScheduler/internal/configuration"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type WorkItem struct {
-	Deadline         time.Time `bson:"deadline,omitempty" json:"deadline"`
-	DurationMinutes  int32     `bson:"durationMinutes,omitempty" json:"durationMinutes"`
-	Id               string    `bson:"id,omitempty" json:"-"`
-	WorkId           string    `bson:"workId,omitempty" json:"workId"`
-	Priority         string    `bson:"priority,omitempty" json:"priority"`
-	StartDate        time.Time `bson:"startDate,omitempty" json:"startDate"`
-	Status           string    `bson:"status,omitempty" json:"status"`
-	WorkType         string    `bson:"workType,omitempty" json:"workType"`
-	Zones            []string  `bson:"zones,omitempty" json:"zones"`
-	CompressionRate  float32   `bson:"compressionRate,omitempty" json:"-"`
-	InitialDuration  int32     `bson:"initialDuration,omitempty" json:"-"`
-	InitialStartDate time.Time `bson:"initialStartDate,omitempty" json:"-"`
+	Deadline         time.Time          `bson:"deadline,omitempty" json:"deadline"`
+	DurationMinutes  int32              `bson:"durationMinutes,omitempty" json:"durationMinutes"`
+	Id               primitive.ObjectID `bson:"_id,omitempty" json:"-"`
+	WorkId           string             `bson:"workId,omitempty" json:"workId"`
+	Priority         string             `bson:"priority,omitempty" json:"priority"`
+	StartDate        time.Time          `bson:"startDate,omitempty" json:"startDate"`
+	Status           string             `bson:"status,omitempty" json:"status"`
+	WorkType         string             `bson:"workType,omitempty" json:"workType"`
+	Zones            []string           `bson:"zones,omitempty" json:"zones"`
+	CompressionRate  float32            `bson:"compressionRate,omitempty" json:"-"`
+	InitialDuration  int32              `bson:"initialDuration,omitempty" json:"-"`
+	InitialStartDate time.Time          `bson:"initialStartDate,omitempty" json:"-"`
 }
 
 func (w *WorkItem) EndTime() time.Time {

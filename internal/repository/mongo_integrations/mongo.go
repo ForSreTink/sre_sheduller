@@ -94,6 +94,7 @@ func (m *MongoClient) Update(ctx context.Context, work *models.WorkItem) (result
 	if err != nil {
 		return
 	}
+	result = work
 	log.Printf("successfully updated %v work document with id %v\n", out.ModifiedCount, work.Id)
 	return
 }
@@ -106,8 +107,16 @@ func (m *MongoClient) GetById(ctx context.Context, id string) (results []*models
 	}
 	defer cursor.Close(ctx)
 
-	err = cursor.All(ctx, results)
-
+	for cursor.Next(ctx) {
+		var wi models.WorkItem
+		if err = cursor.Decode(&wi); err != nil {
+			return
+		}
+		results = append(results, &wi)
+	}
+	if err = cursor.Err(); err != nil {
+		return
+	}
 	return
 }
 

@@ -24,7 +24,7 @@ paths:
         required: true
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
@@ -57,7 +57,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
@@ -86,7 +86,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
@@ -129,11 +129,11 @@ paths:
         required: true
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/work'
+                $ref: '#/components/schemas/works'
         '400':
           description: Bad request
           content:
@@ -171,7 +171,7 @@ paths:
         required: true
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
@@ -237,7 +237,7 @@ paths:
                 - in_progress
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:

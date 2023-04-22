@@ -117,7 +117,7 @@ func (c *Configurator) updateConfig() {
 	} else {
 		c.Data = &conf
 		c.Started = true
-		log.Println("Configuration updated succesfully!")
+		log.Println("Configuration updated Successfuly!")
 	}
 }
 

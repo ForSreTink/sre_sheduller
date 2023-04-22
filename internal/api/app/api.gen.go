@@ -31,49 +31,30 @@ const (
 	PostWorkWorkTypeManual    PostWorkWorkType = "manual"
 )
 
-// Defines values for WorkPriority.
-const (
-	WorkPriorityCritical WorkPriority = "critical"
-	WorkPriorityRegular  WorkPriority = "regular"
-)
-
-// Defines values for WorkStatus.
-const (
-	WorkStatuscanceled  WorkStatus = "canceled"
-	WorkStatusInProgress WorkStatus = "in_progress"
-	WorkStatusPlanned    WorkStatus = "planned"
-)
-
-// Defines values for WorkWorkType.
-const (
-	WorkWorkTypeAutomatic WorkWorkType = "automatic"
-	WorkWorkTypeManual    WorkWorkType = "manual"
-)
-
 // Defines values for WorksPriority.
 const (
-	Critical WorksPriority = "critical"
-	Regular  WorksPriority = "regular"
+	WorksPriorityCritical WorksPriority = "critical"
+	WorksPriorityRegular  WorksPriority = "regular"
 )
 
 // Defines values for WorksStatus.
 const (
-	WorksStatuscanceled  WorksStatus = "canceled"
+	WorksStatusCanceled   WorksStatus = "canceled"
 	WorksStatusInProgress WorksStatus = "in_progress"
 	WorksStatusPlanned    WorksStatus = "planned"
 )
 
 // Defines values for WorksWorkType.
 const (
-	Automatic WorksWorkType = "automatic"
-	Manual    WorksWorkType = "manual"
+	WorksWorkTypeAutomatic WorksWorkType = "automatic"
+	WorksWorkTypeManual    WorksWorkType = "manual"
 )
 
 // Defines values for GetscheduleParamsStatuses.
 const (
-	canceled  GetscheduleParamsStatuses = "canceled"
-	InProgress GetscheduleParamsStatuses = "in_progress"
-	Planned    GetscheduleParamsStatuses = "planned"
+	GetscheduleParamsStatusesCanceled   GetscheduleParamsStatuses = "canceled"
+	GetscheduleParamsStatusesInProgress GetscheduleParamsStatuses = "in_progress"
+	GetscheduleParamsStatusesPlanned    GetscheduleParamsStatuses = "planned"
 )
 
 // Error defines model for error.
@@ -108,28 +89,6 @@ type PostWorkWorkType string
 type ProlongateWork struct {
 	DurationMinutes *int32 `json:"durationMinutes,omitempty"`
 }
-
-// Work defines model for work.
-type Work struct {
-	Deadline        *time.Time    `json:"deadline,omitempty"`
-	DurationMinutes *int32        `json:"durationMinutes,omitempty"`
-	Id              *string       `json:"id,omitempty"`
-	Priority        *WorkPriority `json:"priority,omitempty"`
-	StartDate       *time.Time    `json:"startDate,omitempty"`
-	Status          *WorkStatus   `json:"status,omitempty"`
-	WorkId          *string       `json:"workId,omitempty"`
-	WorkType        *WorkWorkType `json:"workType,omitempty"`
-	Zones           *[]string     `json:"zones,omitempty"`
-}
-
-// WorkPriority defines model for Work.Priority.
-type WorkPriority string
-
-// WorkStatus defines model for Work.Status.
-type WorkStatus string
-
-// WorkWorkType defines model for Work.WorkType.
-type WorkWorkType string
 
 // Works defines model for works.
 type Works = []struct {
@@ -513,25 +472,24 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xYX2/bNhD/KsRtwF5UyXG6F701WTAYaIdiCbCHIBgY8WSzoUj1eLLrBf7uAylbTm0l",
-	"sZs/S9c8WZbun+5+v7sTr6FwVe0sWvaQX4MvJljJeIlEjsJFTa5GYo3xtjSMZCXrKYa/mrHy21IKpTLa",
-	"RpHSUSUZclCS8Q3rCiEBntcIOXgmbcewSEA1JFk7+0HbhlsjnaK2fDhcK2nLOEYKWp4l8W+S93D0j7Ot",
-	"+S70LZHlDUkk57BY33CXn7DgbYmkTdaxU9hrr0Lv5bjvWZ/t2nn+y9HVE2UVv8iqNgj5MNklwzVpR5rn",
-	"UdU2FeTnQDhujCRIoCDNupAGLnqcf0NxZo6uzuLNtbdK2kYaSEA27CrJuuj11tW1e8FzUMUBJKCKYdBo",
-	"sb1X5XvLQ844O5aMtxTpgSnv8zl7MXDQqjdvz4sSz5Ibf9NXbaS1qIIvaQs0Jl5r+3dNbkzofa/rkNZR",
-	"/ws9BhAf0mCCf//UDfa19i+y9ttNSNvStVX3Bek6lBFyOJtoLzzSFEkonKJxNSpROhKnf54IJllcCW3F",
-	"6OwXL860vXJlKU6daYK6OG7qFBIwukDr46taWQW372pZTFAM0wEk0JCBHCbMdZ5ls9kslfFp6micLVV9",
-	"9n50fPLH6cmbYTpIJ1yZ+A6aA7Ag9EgROq9qDAY8TJF8G/5BOkgPDoKwq9HKWkMOh+kgPYQEasmTmL5s",
-	"pRv+jJG3s/A7cudAzDRPRMudaLaFfKhzkOtsBQckK2QkD/n5psnTAEsvSnIVJIBfahMnO1ODoRaQw+cG",
-	"aQ7JKmdBMsI4AcLPjSRUK/H11NkF34vklljY7RYJuyeK4732LFwpWoTvFMtK9BsGb18auPHoQwihvoKd",
-	"CHDYKRC/VO6P5WF9ZCPwi5B5X7tAjGB8OBiEn8JZRhvRK+va6CLiMvvkw8td34jqZ8IScvgpW+/l2XIp",
-	"z1pcx4awkZymKNCXjYnUezt4u82SyMPIDq2EdaJ0jVVB+tdHDLD9ZOgJcGTjR4NZdauVYAK+qSpJ8zt5",
-	"zHIcWAodfS+CZtYtRc73tIVjQskoLM7EsrAtbrQVcqqlkZcGI5i3GsU7peJm13IIPR85NX+0HHXbfU+a",
-	"9ok5xKY7fi+eGHa7oO4ZcHQklVgW5UVhd5/CrdAc07pGcnbdbiSLOwfdV9Yv50KrvjkX8HU0H6n75txI",
-	"rdopLBtnmLvrvrnckTbBdrOLbs6N1/73kP7XW977AJO14yq2wqavE8bHu0CnlfzR0fP8few7RexdwLoX",
-	"tJVrDxB7IfvBTVHEj0MR9lMhrRKr79f4gXPT5xaMg/Z/DeLHXxxuxe9eyUrFxjmA0F64aEqa9HWv+J75",
-	"uC9r7uXo+qjzVqZ+7ERa/nf+Yhy3MfTjV2eo/y+ebpwP99Ry15w9LxVfZ+NjcnHXGm9ycLH4NwAA//+w",
-	"XZJ5kxsAAA==",
+	"H4sIAAAAAAAC/+xY32/bNhD+V4jbgL2osuN0L3prsmAw0A7FEmAPQTAw4tlmQ5Hs8WTXC/y/D6RsObWV",
+	"xG5+rFnzZFm6453uvu/jiddQuso7i5YDFNcQyglWMl0ikaN44cl5JNaYbkvDSFaynmL8qxmrsG2lUCqj",
+	"bTIZOaokQwFKMr5hXSFkwHOPUEBg0nYMiwxUTZK1sx+0rblZpHXUlg8HaydtGcdI0SuwJP5N8h6B/nG2",
+	"Wb5NfctkeUMSyTks1jfc5Scsedsia4p17BR2rldhCHLc9axrbe8C/+Xo6omqil9k5Q1CMch2qbAn7Ujz",
+	"PLnauoLiHAjHtZEEGZSkWZfSwEVH8G9ozszR1Vm6uY5WSVtLAxnIml0lWZed0dq+ti94Dqo8gAxUOYge",
+	"Dbb36nxne8gZZ8eS8ZYmPbDkXTFjWcJT021PYGjVWcHnxUtgyXW4GcsbaS2qGEvaEk261PZvT25MGEJn",
+	"5FjfYff7PAYiH09poom2I9c0PZSkfewiFHA20UEEpCmSUDhF4zwqMXIkTv88EUyyvBLaiuHZL0GcaXvl",
+	"RiNx6kwd3cVx7XPIwOgSbUivamUVw77zspygGOR9yKAmAwVMmH3R681ms1ymp7mjcW/pGnrvh8cnf5ye",
+	"vBnk/XzClUnvoDniCiJhRKShqg1GOEyRQpP+Qd7PDw6isfNopddQwGHezw8hAy95ksrXW/nGP2Pk7Sr8",
+	"jtwGEDPNE9FQJy3bID72Odq1a8UAJCtkpADF+eaSpxGVQYzIVZABfvEmyTxTjbEXUMDnGmkO2apm0TKh",
+	"OAPCz7UkVCvztQTtAu9Fdksu7HbLhN0T5fFeBxZuJBqE75TLyvQbVLirDFwHDDGF2F/BTkQ47JRIWDp3",
+	"5/IgGdnI+yIWPngXeRHXHvT78ad0ltEm8ErvjS4TLHufQny36xtJ/Uw4ggJ+6q1ntN5yQOs1sE56sFGb",
+	"uiwxjGqTmPe2/3abJImGiRxaCevEyNVWRetfHzHBZnzsSHBo0wBpVmK1Mswg1FUlaX4njVmOI0mhZe9F",
+	"9EzlSNuiCx2qcEwoGYXFmVj2tYGNtkJOtTTy0mDC8pZOvFMq7fINhTDwkVPzR6tRO+l1lGmfnGNuuqX3",
+	"4nuA3TMA6UgqsezKdwXefTq3gnPC7xrKvetmIlncudF9tfrlXGjVtc9FgB3Nh+q+fW6oVnIKS+GM++5a",
+	"N5cz0ibabqro5r7xKoAPEcDO9t4HmF6zXSUtrLukMD3eBTqN5Y+OnufXsReK2LuAdS9oK9ecJnVC9oOb",
+	"okjfhiLOp0JaJVafr+kD52bMLRhH7/8axI8/OdyK372KlYuNYwChg3BpKWny18HiRRNyX9rcS9L1wdet",
+	"VP3YmjQC0MZLedxG0Y9fnaj9v4i6cVrY0ctda/bKxZfLxV17vMnBxeLfAAAA///TqC3uoRkAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

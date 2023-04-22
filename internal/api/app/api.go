@@ -74,10 +74,10 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 		errStr += "Deadline can't be greater then now for 4 week; "
 	}
 	if inArray(work.Zones, a.Config.Data.BlackList) && work.Priority != "critical" {
-		errStr += "Can't shedule work for zone in blacklist , excepted critical work; "
+		errStr += "Can't schedule work for zone in blacklist , excepted critical work; "
 	}
 	if !inWhiteList(a.Config.Data.WhiteList, work.Zones) && work.Priority != "critical" {
-		errStr += "Can't shedule work for zone not in whitelist, excepted critical work; "
+		errStr += "Can't schedule work for zone not in whitelist, excepted critical work; "
 	}
 
 	delta = work.StartDate.Sub(ts)
@@ -187,14 +187,13 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	work.Id = ""
 	work.InitialDuration = work.DurationMinutes
 	work.InitialStartDate = work.StartDate
 	work.CompressionRate = 1
 
 	works, needUserApprove, err := a.Scheduller.ScheduleWork(work)
 	if needUserApprove {
-		a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err, works)
+		a.writeError(w, http.StatusInternalServerError, "Unable to schedule", err, works)
 		return
 	}
 	if err != nil {
@@ -205,7 +204,7 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 	added_work := []*models.WorkItem{}
 
 	for _, work := range works {
-		if work.Id == "" {
+		if work.Id.IsZero() {
 			work, err := a.RepoData.Add(r.Context(), work)
 			if err != nil {
 				a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
@@ -266,8 +265,6 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 		}
 	}
 
-	fmt.Println("AAAAAAAAAAA")
-
 	work_b, err := json.Marshal(works)
 	if err != nil {
 		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
@@ -321,7 +318,7 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 		if needUserApprove {
 			a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		}
-		a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err, works)
+		a.writeError(w, http.StatusInternalServerError, "Unable to schedule", err, works)
 		return
 	}
 
@@ -390,7 +387,7 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 
 	works, needUserApprove, err := a.Scheduller.ProlongateWorkById(works)
 	if needUserApprove {
-		a.writeError(w, http.StatusInternalServerError, "Unable to shedule", err, works)
+		a.writeError(w, http.StatusInternalServerError, "Unable to schedule", err, works)
 		return
 	}
 	if err != nil {
