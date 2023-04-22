@@ -57,7 +57,7 @@ func inWhiteList(whitelist map[string][]configuration.Window, zones []string) bo
 }
 
 func (a *Api) validateAddWork(work *models.WorkItem) error {
-	ts := time.Now()
+	ts := time.Now().UTC()
 	errStr := ""
 	fmt.Println(work)
 	if work.Priority != "regular" && work.Priority != "critical" {
@@ -85,7 +85,7 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 		errStr += "Can't schedule work for zone not in whitelist, excepted critical work; "
 	}
 
-	if work.StartDate.Unix() <= ts.Unix() {
+	if work.StartDate.UTC().Unix() <= ts.Unix() {
 		errStr += "Start Date can't be in past; "
 	}
 	if work.DurationMinutes < a.Scheduller.Config.MinWorkDurationMinutes.Automatic && work.WorkType == "automatic" {
@@ -198,6 +198,9 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 	work.InitialDuration = work.DurationMinutes
 	work.InitialStartDate = work.StartDate
 	work.CompressionRate = 1
+	if work.WorkType == "manual" {
+		work.MaxCompressionRate = 1
+	}
 
 	works, needUserApprove, err := a.Scheduller.ScheduleWork(work)
 	if needUserApprove {

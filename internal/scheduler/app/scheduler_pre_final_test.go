@@ -237,10 +237,10 @@ func TestScheduleEvents(t *testing.T) {
 			ActionTime: time.Date(2023, 04, 18, 22, 50, 0, 0, time.UTC), //18 апреля 22:50
 			Action:     "config change",
 			ConfigChange: func(c *configuration.Config) {
-				c.WhiteList["Zone_1"][0].StartHour = 0
-				c.WhiteList["Zone_1"] = append(c.WhiteList["Zone_1"], configuration.Window{StartHour: 23, EndHour: 24})
-				c.WhiteList["Zone_3"][0].StartHour = 0
-				c.WhiteList["Zone_3"] = append(c.WhiteList["Zone_3"], configuration.Window{StartHour: 23, EndHour: 24})
+				c.WhiteList["Zone_1"][0].StartHourDuration = 0
+				c.WhiteList["Zone_1"] = append(c.WhiteList["Zone_1"], configuration.Window{StartHourDuration: 23 * time.Hour, EndHourDuration: 24 * time.Hour})
+				c.WhiteList["Zone_3"][0].StartHourDuration = 0
+				c.WhiteList["Zone_3"] = append(c.WhiteList["Zone_3"], configuration.Window{StartHourDuration: 23 * time.Hour, EndHourDuration: 24 * time.Hour})
 			},
 		},
 		{

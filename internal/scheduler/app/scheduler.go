@@ -561,7 +561,7 @@ func (sch *Scheduler) checkZoneLists(zone string, wi *models.WorkItem) (availavl
 		endDate := wi.StartDate.Add(time.Duration(wi.DurationMinutes) * time.Minute)
 		if wi.DurationMinutes >= 60*24 {
 			for _, window := range windows {
-				if window.EndHour-window.StartHour < 24 {
+				if window.EndHourDuration-window.StartHourDuration < 24*time.Hour {
 					err = fmt.Errorf("work duration %v is longer than zone white-list windows", wi.DurationMinutes)
 					return
 				}
@@ -573,11 +573,11 @@ func (sch *Scheduler) checkZoneLists(zone string, wi *models.WorkItem) (availavl
 			endHour++
 		}
 		if endDate.Day() > wi.StartDate.Day() {
-			workIntervals = append(workIntervals, configuration.Window{StartHour: uint32(wi.StartDate.Hour()), EndHour: 24})
-			workIntervals = append(workIntervals, configuration.Window{StartHour: 0, EndHour: uint32(endHour)})
+			workIntervals = append(workIntervals, configuration.Window{StartHourDuration: time.Duration(wi.StartDate.Hour()) * time.Hour, EndHourDuration: 24 * time.Hour})
+			workIntervals = append(workIntervals, configuration.Window{StartHourDuration: 0, EndHourDuration: time.Duration(endHour) * time.Hour})
 		}
 		if endHour != 0 {
-			workIntervals = append(workIntervals, configuration.Window{StartHour: uint32(wi.StartDate.Hour()), EndHour: uint32(endHour)})
+			workIntervals = append(workIntervals, configuration.Window{StartHourDuration: time.Duration(wi.StartDate.Hour()) * time.Hour, EndHourDuration: time.Duration(endHour) * time.Hour})
 		}
 
 		for _, workInterval := range workIntervals {
@@ -622,12 +622,12 @@ func (sch *Scheduler) getNearestZoneWindowStart(zone string, wi *models.WorkItem
 		day := time.Date(wi.StartDate.Year(), wi.StartDate.Month(), wi.StartDate.Day(), 0, 0, 0, 0, time.UTC)
 		sugestions := []time.Time{}
 		for _, w := range windows {
-			if wi.StartDate.Hour() < int(w.StartHour) {
-				sugestions = append(sugestions, day.Add(time.Duration(w.StartHour)*time.Hour))
+			if time.Duration(wi.StartDate.Hour())*time.Hour < w.StartHourDuration {
+				sugestions = append(sugestions, day.Add(w.StartHourDuration))
 				continue
 			}
-			if wi.StartDate.Hour() > int(w.EndHour) {
-				sugestions = append(sugestions, day.Add(time.Duration(w.StartHour+24)*time.Hour))
+			if time.Duration(wi.StartDate.Hour())*time.Hour > w.EndHourDuration {
+				sugestions = append(sugestions, day.Add(w.StartHourDuration).AddDate(0, 0, 1))
 				continue
 			}
 		}
