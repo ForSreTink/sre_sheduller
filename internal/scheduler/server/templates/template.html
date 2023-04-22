@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<style type="text/css">
+        table {
+        width: 200px;
+        float: left;
+        margin: 0 auto 20px auto;
+        }
+        
+</style>
+<body>
+    {{ range $zone, $items := . }}
+        <h1>{{$zone}}</h1>
+        <table border="1" cellspacing="0">
+            <thead>
+            <tr>
+            <th>WorkId</th>
+            {{ range $day, $hours := ( index $items 0 ).Date }}
+            <th colspan="720">{{$day}}</th>
+            {{end}}
+            </tr>
+            <tr>
+            <th>Hours</th>
+            {{ range $day, $hours := ( index $items 0 ).Date }}
+                {{ range $hour, $minutes := $hours }}
+            <th colspan="30">{{$hour}}</th>
+                {{end}}
+            {{end}}
+        </thead>
+        <tbody border="0">
+        {{ range $i, $item := $items }}
+            <tr style="height: 10;">
+            <td>{{$item.WorkId}}</td>
+            {{ range $day, $hours := $item.Date }}
+                {{ range $hour, $minutes := $hours }}
+                    {{ range $minute, $value := $minutes.Minutes }}
+                <td style="background-color: {{$value.Value}};">*</td>
+                    {{ end }}
+                {{ end }}
+            {{ end }}
+            </tr>
+        {{ end }}
+        </tbody>
+    </table>
+    {{end}}
+</body>
+

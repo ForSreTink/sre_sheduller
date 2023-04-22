@@ -10,16 +10,20 @@ import (
 	"workScheduler/internal/scheduler/models"
 )
 
+const (
+	unitTestConfigName = "../test_configs/scheduler_unit_config.yml"
+)
+
 type RepositoryMock struct {
-	GetByIdResult *models.WorkItem
+	GetByIdResult []*models.WorkItem
 	ListResult    []*models.WorkItem
 }
 
 var _ repository.ReadRepository = (*RepositoryMock)(nil)
 
-func (r RepositoryMock) GetById(ctx context.Context, id string) (mod *models.WorkItem, err error) {
+func (r RepositoryMock) GetById(ctx context.Context, id string) (mod []*models.WorkItem, err error) {
 	mod = r.GetByIdResult
-	if r.GetByIdResult == nil {
+	if len(r.GetByIdResult) == 0 {
 		err = fmt.Errorf("test error from RepositoryMock")
 	}
 	return
@@ -33,28 +37,38 @@ func TestScheduleWorkSuccees(t *testing.T) {
 
 	t.Run("succees schedule work", func(t *testing.T) {
 
-		testTime := time.Now()
-		expectedInDb := models.WorkItem{
-			Zones:           []string{"zone1"},
-			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
-			DurationMinutes: 30,
-			WorkId:          "testId",
-			Priority:        "critical",
+		testTime := time.Now().Round(time.Hour * 24)
+		expectedInDb := []*models.WorkItem{
+			{
+				Zones:           []string{"zone1"},
+				StartDate:       testTime.Add(time.Duration(7) * time.Hour),
+				DurationMinutes: 30,
+				WorkId:          "testId",
+				Priority:        "critical",
+			},
+			{
+				Zones:           []string{"zone3"},
+				StartDate:       testTime.Add(time.Duration(8) * time.Hour),
+				DurationMinutes: 30,
+				WorkId:          "testId",
+				Priority:        "critical",
+			},
 		}
 		testItem := models.WorkItem{
-			Zones:           []string{"zone1"},
-			StartDate:       testTime.Round(time.Duration(24) * time.Hour).Add(time.Duration(7) * time.Hour),
+			Zones:           []string{"zone1", "zone2"},
+			StartDate:       testTime.Add(time.Duration(8) * time.Hour),
 			DurationMinutes: 30,
 			WorkId:          "",
 			Priority:        "critical",
 		}
 
 		rep := RepositoryMock{
-			ListResult: []*models.WorkItem{&expectedInDb},
+			ListResult: expectedInDb,
 		}
 		ctx := context.Background()
-		c := configuration.NewConfigurator(ctx, "../../../config.yml")
+		c := configuration.NewConfigurator(ctx, unitTestConfigName)
 		c.Run()
+		time.Sleep(2 * time.Second)
 
 		scheduler := NewScheduler(ctx, rep, c)
 		result, _, err := scheduler.ScheduleWork(&testItem)
@@ -69,10 +83,10 @@ func TestDublicateScheduleWorkError(t *testing.T) {
 
 	t.Run("error duplicate schedule work", func(t *testing.T) {
 
-		testTime := time.Now()
+		testTime := time.Now().Round(time.Hour * 24)
 		expectedInDb := models.WorkItem{
 			Zones:           []string{"zone1"},
-			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
+			StartDate:       testTime.Add(time.Duration(12) * time.Hour),
 			DurationMinutes: 50,
 			WorkId:          "testId",
 			Priority:        "regular",
@@ -87,6 +101,7 @@ func TestDublicateScheduleWorkError(t *testing.T) {
 		ctx := context.Background()
 		c := configuration.NewConfigurator(ctx, "../../../config.yml")
 		c.Run()
+		time.Sleep(2 * time.Second)
 
 		scheduler := NewScheduler(ctx, rep, c)
 		result, _, err := scheduler.ScheduleWork(&testItem)
@@ -101,10 +116,10 @@ func TestProlongateWorkSuccees(t *testing.T) {
 
 	t.Run("succees prolongate work", func(t *testing.T) {
 
-		testTime := time.Now()
+		testTime := time.Now().Round(time.Hour * 24)
 		expectedInDb := models.WorkItem{
 			Zones:           []string{"zone1"},
-			StartDate:       testTime.Add(time.Duration(48) * time.Hour),
+			StartDate:       testTime.Add(time.Duration(12) * time.Hour),
 			DurationMinutes: 30,
 			WorkId:          "testId",
 			Priority:        "regular",
@@ -120,11 +135,12 @@ func TestProlongateWorkSuccees(t *testing.T) {
 		ctx := context.Background()
 		c := configuration.NewConfigurator(ctx, "../../../config.yml")
 		c.Run()
+		time.Sleep(2 * time.Second)
 
 		scheduler := NewScheduler(ctx, rep, c)
-		result, _, err := scheduler.ProlongateWorkById(&testItem)
+		result, _, err := scheduler.ProlongateWorkById([]*models.WorkItem{&testItem})
 		if err != nil {
-			t.Errorf("Expect return error but got result: %v", err)
+			t.Errorf("Unexpected error: %v", err)
 		}
 		if len(result) == 0 {
 			t.Errorf("Expect non-zero works count in result: %v", err)

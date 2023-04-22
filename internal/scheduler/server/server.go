@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 
+	"workScheduler/internal/actualizer"
 	api "workScheduler/internal/api/app"
 	"workScheduler/internal/configuration"
 	handlers "workScheduler/internal/handlers"
@@ -17,6 +18,7 @@ import (
 	mongo "workScheduler/internal/repository/mongo_integrations"
 
 	// inmemoryrepository "workScheduler/internal/repository/inmemory_repository"
+	tmp "workScheduler/internal/scheduler/server/templates"
 
 	"github.com/go-openapi/runtime/middleware"
 	gorilla_handlers "github.com/gorilla/handlers"
@@ -49,6 +51,9 @@ func (s *Server) Run() error {
 		return err
 	}
 
+	a := actualizer.NewActualizer(data)
+	a.Run(s.Ctx)
+
 	// data := inmemoryrepository.NewInmemoryRepository()
 	scheduler := app.NewScheduler(s.Ctx, data, s.Config)
 	Server := api.NewApi(data, scheduler, s.Config)
@@ -58,8 +63,11 @@ func (s *Server) Run() error {
 		Path:    "/swagger",
 	}, nil)
 
+	t := tmp.NewTemplate(data)
+
 	r := mux.NewRouter()
 	api.HandlerFromMux(Server, r)
+	r.HandleFunc("/", t.Generate).Methods("GET")
 	r.HandleFunc("/health", handlers.HealthCheckHandler).Methods("GET")
 	r.Handle("/swagger", sh).Methods("GET")
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./openapi"))))

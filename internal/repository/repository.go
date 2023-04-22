@@ -26,7 +26,7 @@ type ReadWriteRepository interface {
 }
 
 type ReadRepository interface {
-	GetById(ctx context.Context, id string) (*models.WorkItem, error)
+	GetById(ctx context.Context, id string) ([]*models.WorkItem, error)
 	List(ctx context.Context, from time.Time, to time.Time, zones []string, statuses []string) ([]*models.WorkItem, error)
 }
 

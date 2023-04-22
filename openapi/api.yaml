@@ -23,8 +23,12 @@ paths:
               $ref: '#/components/schemas/postWork'
         required: true
       responses:
-        '201':
-          description: Succesfull created
+        '200':
+          description: Successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/works'
         '400':
           description: Bad request
           content:
@@ -53,11 +57,11 @@ paths:
             type: string
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/work'
+                $ref: '#/components/schemas/works'
         '404':
           description: Work with id no found
         '500':
@@ -82,11 +86,11 @@ paths:
             type: string
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/work'
+                $ref: '#/components/schemas/works'
         '400':
           description: Bad request
           content:
@@ -121,15 +125,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/moveWork'
+              $ref: '#/components/schemas/works'
         required: true
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/work'
+                $ref: '#/components/schemas/works'
         '400':
           description: Bad request
           content:
@@ -167,7 +171,7 @@ paths:
         required: true
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
@@ -229,15 +233,15 @@ paths:
               type: string
               enum:
                 - planned
-                - cancelled
+                - canceled
                 - in_progress
       responses:
         '200':
-          description: Succesfull
+          description: Successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/work'
+                $ref: '#/components/schemas/works'
         '404':
           description: Work with id no found
         '500':
@@ -312,7 +316,7 @@ components:
           type: string
           enum:
             - planned
-            - cancelled
+            - canceled
             - in_progress
         workType:
           type: string
@@ -351,7 +355,7 @@ components:
             type: string
             enum:
               - planned
-              - cancelled
+              - canceled
               - in_progress
           workType:
             type: string
@@ -367,7 +371,7 @@ components:
       type: string
       enum:
         - planned
-        - cancelled
+        - canceled
         - in_progress
     error:
       type: object

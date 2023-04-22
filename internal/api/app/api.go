@@ -10,6 +10,8 @@ import (
 	"workScheduler/internal/repository"
 	"workScheduler/internal/scheduler/app"
 	"workScheduler/internal/scheduler/models"
+
+	"github.com/google/uuid"
 )
 
 type Api struct {
@@ -74,14 +76,13 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 		errStr += "Deadline can't be greater then now for 4 week; "
 	}
 	if inArray(work.Zones, a.Config.Data.BlackList) && work.Priority != "critical" {
-		errStr += "Can't shedule work for zone in blacklist , excepted critical work; "
+		errStr += "Can't schedule work for zone in blacklist , excepted critical work; "
 	}
 	if !inWhiteList(a.Config.Data.WhiteList, work.Zones) && work.Priority != "critical" {
-		errStr += "Can't shedule work for zone not in whitelist, excepted critical work; "
+		errStr += "Can't schedule work for zone not in whitelist, excepted critical work; "
 	}
 
-	delta = work.StartDate.Sub(ts)
-	if delta <= 0 {
+	if work.StartDate.Unix() <= ts.Unix() {
 		errStr += "Start Date can't be in past; "
 	}
 	if work.DurationMinutes < a.Scheduller.Config.MinWorkDurationMinutes.Automatic && work.WorkType == "automatic" {
@@ -99,8 +100,8 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	if work.StartDate.Minute()%5 != 0 && work.WorkType == "manual" {
 		errStr += "Manual work started time must be multiple by 5 minutes; "
 	}
-	if work.StartDate.Minute()%1 != 0 && work.WorkType == "automatic" {
-		errStr += "Automatic work started time must be multiple by 1 minutes; "
+	if work.StartDate.Second() != 0 && work.StartDate.Nanosecond() != 0 {
+		errStr += "Work started time must be multiple by 1 minutes; "
 	}
 
 	if errStr != "" {
@@ -110,25 +111,13 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 	}
 }
 
-func (a *Api) writeBadRequestError(w http.ResponseWriter, code string, message string) {
-	w.WriteHeader(http.StatusBadRequest)
-	err := ErrorStruct{
-		Message:     message,
-		ErrorCode:   code,
-		Alternative: []*models.WorkItem{},
+func (a *Api) writeError(w http.ResponseWriter, status int, code string, message error, alternative []*models.WorkItem) {
+	w.WriteHeader(status)
+	if message == nil {
+		message = errors.New("")
 	}
-	errBytes, e := json.Marshal(err)
-	if e != nil {
-		w.Write([]byte(e.Error()))
-	} else {
-		w.Write(errBytes)
-	}
-}
-
-func (a *Api) writeInternalError(w http.ResponseWriter, code string, message string, alternative []*models.WorkItem) {
-	w.WriteHeader(http.StatusInternalServerError)
 	err := ErrorStruct{
-		Message:     message,
+		Message:     message.Error(),
 		ErrorCode:   code,
 		Alternative: alternative,
 	}
@@ -147,12 +136,12 @@ func (a *Api) Getschedule(w http.ResponseWriter, r *http.Request, params Getsche
 	var zones []string
 
 	if params.FromDate == nil || params.ToDate == nil {
-		a.writeBadRequestError(w, "Bad request", "FromDate and StartDate can't be null")
+		a.writeError(w, http.StatusBadRequest, "Bad request", errors.New("FromDate and StartDate can't be null"), []*models.WorkItem{})
 		return
 	}
 
 	if params.FromDate.Unix() >= params.ToDate.Unix() {
-		a.writeBadRequestError(w, "Bad request", "FromDate must be before StartDate")
+		a.writeError(w, http.StatusBadRequest, "Bad request", errors.New("FromDate must be before StartDate"), []*models.WorkItem{})
 		return
 	}
 
@@ -170,13 +159,13 @@ func (a *Api) Getschedule(w http.ResponseWriter, r *http.Request, params Getsche
 
 	works, err := a.RepoData.List(r.Context(), *params.FromDate, *params.ToDate, zones, statuses)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
 	works_b, err := json.Marshal(works)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
@@ -190,37 +179,55 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(work)
 	if err != nil {
-		a.writeBadRequestError(w, "Bad request", err.Error())
+		a.writeError(w, http.StatusBadRequest, "Bad request", err, []*models.WorkItem{})
 		return
 	}
 
 	if err := a.validateAddWork(work); err != nil {
-		a.writeBadRequestError(w, "Bad request", err.Error())
+		a.writeError(w, http.StatusBadRequest, "Bad request", err, []*models.WorkItem{})
 		return
 	}
 
-	works, unexepted, err := a.Scheduller.ScheduleWork(work)
+	work.WorkId = uuid.New().String()
+	work.InitialDuration = work.DurationMinutes
+	work.InitialStartDate = work.StartDate
+	work.CompressionRate = 1
+
+	works, needUserApprove, err := a.Scheduller.ScheduleWork(work)
+	if needUserApprove {
+		a.writeError(w, http.StatusInternalServerError, "Unable to schedule", err, works)
+		return
+	}
 	if err != nil {
-		if unexepted {
-			a.writeInternalError(w, "Unexpected error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal server error", err, []*models.WorkItem{})
+		return
+	}
+
+	added_work := []*models.WorkItem{}
+
+	for _, work := range works {
+		if work.Id.IsZero() {
+			work, err := a.RepoData.Add(r.Context(), work)
+			if err != nil {
+				a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
+				return
+			}
+			added_work = append(added_work, work)
+		} else {
+			_, err := a.RepoData.Update(r.Context(), work)
+			if err != nil {
+				a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
+				return
+			}
 		}
-		a.writeInternalError(w, "Unable to shedule", err.Error(), works)
+	}
+	work_b, err := json.Marshal(added_work)
+	if err != nil {
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
-	work.Status = "planned"
-	work, err = a.RepoData.Add(r.Context(), work)
-	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
-		return
-	}
-	work_b, err := json.Marshal(work)
-	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	w.Write(work_b)
 }
 
@@ -229,12 +236,12 @@ func (a *Api) GetWorkById(w http.ResponseWriter, r *http.Request, workId string)
 
 	work, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 	work_b, err := json.Marshal(work)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
@@ -245,23 +252,24 @@ func (a *Api) GetWorkById(w http.ResponseWriter, r *http.Request, workId string)
 func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId string) {
 	defer r.Body.Close()
 
-	work, err := a.RepoData.GetById(r.Context(), workId)
+	works, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
-	work.Status = "cancelled"
-
-	work, err = a.RepoData.Update(r.Context(), work)
-	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
-		return
+	for idx := range works {
+		works[idx].Status = "canceled"
+		works[idx], err = a.RepoData.Update(r.Context(), works[idx])
+		if err != nil {
+			a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
+			return
+		}
 	}
 
-	work_b, err := json.Marshal(work)
+	work_b, err := json.Marshal(works)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
@@ -271,53 +279,62 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 
 func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string) {
 	defer r.Body.Close()
-	work, err := a.RepoData.GetById(r.Context(), workId)
+	works, err := a.RepoData.GetById(r.Context(), workId)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
-		return
-	}
-
-	if work.Status != "planned" {
-		a.writeBadRequestError(w, "Bad request", "Can't move work with status != planned")
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
 	w_b := &models.WorkItem{}
 	err = json.NewDecoder(r.Body).Decode(w_b)
 	if err != nil {
-		a.writeBadRequestError(w, "Bad request", err.Error())
+		a.writeError(w, http.StatusBadRequest, "Bad request", err, []*models.WorkItem{})
 		return
 	}
 
-	work.StartDate = w_b.StartDate
+	planned := false
 
-	if w_b.DurationMinutes != 0 {
-		work.DurationMinutes = w_b.DurationMinutes
-	}
-
-	if err := a.validateAddWork(work); err != nil {
-		a.writeBadRequestError(w, "Bad request", err.Error())
-		return
-	}
-
-	works, unexepted, err := a.Scheduller.MoveWork(work)
-	if err != nil {
-		if unexepted {
-			a.writeInternalError(w, "Unexpected error", err.Error(), []*models.WorkItem{})
+	for _, work := range works {
+		if work.Status == "planned" {
+			planned = true
 		}
-		a.writeInternalError(w, "Unable to shedule", err.Error(), works)
+		work.StartDate = w_b.StartDate
+
+		if w_b.DurationMinutes != 0 {
+			work.DurationMinutes = w_b.DurationMinutes
+		}
+
+		if err := a.validateAddWork(work); err != nil {
+			a.writeError(w, http.StatusBadRequest, "Bad request", err, []*models.WorkItem{})
+			return
+		}
+	}
+
+	if !planned {
+		a.writeError(w, http.StatusBadRequest, "Bad request", errors.New("Can't move work with status != planned"), []*models.WorkItem{})
 		return
 	}
 
-	work, err = a.RepoData.Update(r.Context(), work)
+	works, needUserApprove, err := a.Scheduller.MoveWork(works)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		if needUserApprove {
+			a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
+		}
+		a.writeError(w, http.StatusInternalServerError, "Unable to schedule", err, works)
 		return
 	}
 
-	work_b, err := json.Marshal(work)
+	for _, work := range works {
+		_, err = a.RepoData.Update(r.Context(), work)
+		if err != nil {
+			a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
+			return
+		}
+	}
+
+	work_b, err := json.Marshal(works)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
@@ -327,41 +344,56 @@ func (a *Api) MoveWorkById(w http.ResponseWriter, r *http.Request, workId string
 
 func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId string) {
 	defer r.Body.Close()
-	work, err := a.RepoData.GetById(r.Context(), workId)
-	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
-		return
-	}
-
-	if work.Status != "in_progress" {
-		a.writeBadRequestError(w, "Bad request", "Can't prolongate work with status != in_progress")
-		return
-	}
-
-	if work.WorkType != "manual" {
-		a.writeBadRequestError(w, "Bad request", "Only manual work may be prolongate")
-		return
-	}
 
 	w_b := &models.WorkItem{}
-	err = json.NewDecoder(r.Body).Decode(w_b)
+	err := json.NewDecoder(r.Body).Decode(w_b)
 	if err != nil {
-		a.writeBadRequestError(w, "Bad request", err.Error())
+		a.writeError(w, http.StatusBadRequest, "Bad request", err, []*models.WorkItem{})
 		return
 	}
 
-	work.DurationMinutes = w_b.DurationMinutes
-	if err := a.validateAddWork(work); err != nil {
-		a.writeBadRequestError(w, "Bad request", err.Error())
+	works, err := a.RepoData.GetById(r.Context(), workId)
+	if err != nil {
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
-	works, unexepted, err := a.Scheduller.ProlongateWorkById(work)
-	if err != nil {
-		if unexepted {
-			a.writeInternalError(w, "Unexpected error", err.Error(), []*models.WorkItem{})
+	if len(works) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	in_progress := false
+
+	for _, work := range works {
+		if work.Status == "in_progress" {
+			in_progress = true
 		}
-		a.writeInternalError(w, "Unable to shedule", err.Error(), works)
+
+		if work.WorkType != "manual" {
+			a.writeError(w, http.StatusBadRequest, "Bad request", errors.New("Only manual work may be prolongate"), []*models.WorkItem{})
+			return
+		}
+
+		work.DurationMinutes = w_b.DurationMinutes
+		if err := a.validateAddWork(work); err != nil {
+			a.writeError(w, http.StatusBadRequest, "Bad request", err, []*models.WorkItem{})
+			return
+		}
+	}
+
+	if !in_progress {
+		a.writeError(w, http.StatusBadRequest, "Bad request", errors.New("Can't prolongate work with status != in_progress"), []*models.WorkItem{})
+		return
+	}
+
+	works, needUserApprove, err := a.Scheduller.ProlongateWorkById(works)
+	if needUserApprove {
+		a.writeError(w, http.StatusInternalServerError, "Unable to schedule", err, works)
+		return
+	}
+	if err != nil {
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
@@ -370,7 +402,7 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 	for _, wks := range works {
 		wk, err := a.RepoData.Update(r.Context(), wks)
 		if err != nil {
-			a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+			a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 			return
 		}
 		updatedWorks = append(updatedWorks, wk)
@@ -378,7 +410,7 @@ func (a *Api) ProlongateWorkById(w http.ResponseWriter, r *http.Request, workId 
 
 	works_b, err := json.Marshal(updatedWorks)
 	if err != nil {
-		a.writeInternalError(w, "internal error", err.Error(), []*models.WorkItem{})
+		a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 		return
 	}
 
