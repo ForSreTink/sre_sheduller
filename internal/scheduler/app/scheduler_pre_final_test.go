@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	finalTestConfigName = "../test_configs/scheduler_pre_final_config.yml"
+	preFinalTestConfigName = "../test_configs/scheduler_pre_final_config.yml"
 )
 
 type TestEvent struct {
@@ -342,7 +342,7 @@ func TestScheduleEvents(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	c := configuration.NewConfigurator(ctx, finalTestConfigName)
+	c := configuration.NewConfigurator(ctx, preFinalTestConfigName)
 	c.Run()
 	time.Sleep(2 * time.Second)
 
