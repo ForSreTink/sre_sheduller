@@ -139,15 +139,19 @@ func (c *Configurator) readConfig() (config Config, err error) {
 			endString := config.WhiteList[name][idx].EndHour
 
 			startDuration, errParse := time.Parse("15:04", startString)
+			fmt.Println(startDuration)
 			if errParse != nil {
 				err = errParse
 				return
 			}
+			startDuration = startDuration.AddDate(1970, 0, 0)
 			endDuration, errParse := time.Parse("15:04", endString)
 			if errParse != nil {
 				err = errParse
 				return
 			}
+			endDuration = endDuration.AddDate(1970, 0, 0)
+			fmt.Println(endDuration.Unix())
 			config.WhiteList[name][idx].StartHourDuration = time.Duration(startDuration.Unix())
 			config.WhiteList[name][idx].EndHourDuration = time.Duration(endDuration.Unix())
 		}
@@ -163,10 +167,10 @@ func (c *Configurator) validateConfig(conf *Config) error {
 		zones[name] = ts
 		additionalIntervals := []Window{}
 		for i, interval := range zone {
-			if interval.StartHourDuration >= 24 {
+			if interval.StartHourDuration >= 24*time.Hour {
 				errStr += "start_hour must be uint in range from 0 to 23; "
 			}
-			if interval.EndHourDuration >= 24 {
+			if interval.EndHourDuration >= 24*time.Hour {
 				errStr += "EndHour must be uint in range from 1 to 23; "
 			}
 			if interval.StartHourDuration >= interval.EndHourDuration {
