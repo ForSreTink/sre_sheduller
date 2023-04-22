@@ -11,7 +11,6 @@ import (
 	"workScheduler/internal/repository"
 	"workScheduler/internal/scheduler/models"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -69,9 +68,6 @@ var _ repository.ReadWriteRepository = (*MongoClient)(nil)
 func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
 
 	result = work
-	if result.WorkId == "" {
-		result.WorkId = uuid.New().String()
-	}
 	out, err := m.worksCollection.InsertOne(ctx, work)
 	if err != nil {
 		return
