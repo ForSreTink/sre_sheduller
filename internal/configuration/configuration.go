@@ -7,9 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
@@ -26,15 +24,15 @@ type Configurator struct {
 }
 
 type Config struct {
-	WhiteList               map[string][]Window  `yaml:"white_list"`
-	BlackList               []string             `yaml:"black_list"`
-	MinAvialableZones       int32                `yaml:"min_avialable_zones"`
-	PausesMinutes           map[string]int32     `yaml:"pauses"`
-	MinWorkDurationMinutes  WorkDurationSettings `yaml:"min_work_duration_minutes"`
-	MaxWorkDurationMinutes  WorkDurationSettings `yaml:"max_work_duration_minutes"`
-	MaxDeadlineDays         int32                `yaml:"max_deadline_days"`
-	TimeCompressionPercents string               `yaml:"time_compression_percents"`
-	TimeCompressionRate     float32
+	WhiteList              map[string][]Window  `yaml:"white_list"`
+	BlackList              []string             `yaml:"black_list"`
+	MinAvialableZones      int32                `yaml:"min_avialable_zones"`
+	PausesMinutes          map[string]int32     `yaml:"pauses"`
+	MinWorkDurationMinutes WorkDurationSettings `yaml:"min_work_duration_minutes"`
+	MaxWorkDurationMinutes WorkDurationSettings `yaml:"max_work_duration_minutes"`
+	MaxDeadlineDays        int32                `yaml:"max_deadline_days"`
+	// TimeCompressionPercents string               `yaml:"time_compression_percents"`
+	// TimeCompressionRate     float32
 }
 
 type Window struct {
@@ -202,16 +200,16 @@ func (c *Configurator) validateConfig(conf *Config) error {
 		errStr += "max_deadline_days duration value must be greater then 0;"
 	}
 
-	var validTimeCompressionPercents = regexp.MustCompile(`^(?P<num>[0-9]{1,2})%$`)
-	if len(conf.TimeCompressionPercents) != 0 {
-		if matches := validTimeCompressionPercents.FindStringSubmatch(conf.TimeCompressionPercents); len(matches) > 0 {
-			subgroup := validTimeCompressionPercents.SubexpIndex("num")
-			numValue, _ := strconv.ParseFloat(matches[subgroup], 32)
-			conf.TimeCompressionRate = 1 - (float32(numValue) / float32(100))
-		} else {
-			errStr += fmt.Sprintf("invalid time_compression_persents value in config: [%s]", conf.TimeCompressionPercents)
-		}
-	}
+	// var validTimeCompressionPercents = regexp.MustCompile(`^(?P<num>[0-9]{1,2})%$`)
+	// if len(conf.TimeCompressionPercents) != 0 {
+	// 	if matches := validTimeCompressionPercents.FindStringSubmatch(conf.TimeCompressionPercents); len(matches) > 0 {
+	// 		subgroup := validTimeCompressionPercents.SubexpIndex("num")
+	// 		numValue, _ := strconv.ParseFloat(matches[subgroup], 32)
+	// 		conf.TimeCompressionRate = 1 - (float32(numValue) / float32(100))
+	// 	} else {
+	// 		errStr += fmt.Sprintf("invalid time_compression_persents value in config: [%s]", conf.TimeCompressionPercents)
+	// 	}
+	// }
 
 	if errStr != "" {
 		return errors.New(errStr)

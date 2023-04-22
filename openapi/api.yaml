@@ -309,6 +309,10 @@ components:
           type: integer
           format: int32
           example: 2
+        maxCompressionRate:
+          type: number
+          format: float
+          example: 0.6
         deadline:
           type: string
           format: date-time
@@ -357,6 +361,14 @@ components:
               - planned
               - canceled
               - in_progress
+          maxCompressionRate:
+            type: number
+            format: float
+            example: 0.6
+          compressionRate:
+            type: number
+            format: float
+            example: 0.8
           workType:
             type: string
             enum:

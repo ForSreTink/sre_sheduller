@@ -104,6 +104,9 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 		errStr += "Work started time must be multiple by 1 minutes; "
 	}
 
+	if work.WorkType == "automatic" && work.MaxCompressionRate < 0.0 || work.MaxCompressionRate > 1 {
+		errStr += "MaxCompressionRate must be float value between 0 and 1;"
+	}
 	if errStr != "" {
 		return errors.New(errStr)
 	} else {
