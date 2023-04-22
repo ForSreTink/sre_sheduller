@@ -11,6 +11,7 @@ import (
 	"workScheduler/internal/scheduler/models"
 
 	interval "github.com/go-follow/time-interval"
+	"github.com/pkg/errors"
 	"golang.org/x/exp/slices"
 )
 
@@ -108,7 +109,11 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
 	newSchedule, mustApprove, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
-		err = zoneErr
+		if len(newSchedule) == 0 {
+			err = errors.Errorf("Unable to shedule new work: %s", zoneErr)
+		} else {
+			err = zoneErr
+		}
 	}
 	if len(newSchedule) != 0 {
 		userMustApprove = mustApprove
