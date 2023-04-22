@@ -3,7 +3,6 @@ package models
 import (
 	"fmt"
 	"time"
-	"workScheduler/internal/configuration"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -86,55 +85,4 @@ func (w *WorkItem) Uncompress() {
 	w.CompressionRate = 0
 	w.StartDate = w.InitialStartDate
 	w.DurationMinutes = w.InitialDuration
-}
-
-func (w *WorkItem) SetNextPossibleStartDateInInterval(dateVariant time.Time, intervals []configuration.Window) bool {
-	startHour := dateVariant.Hour()
-	endHour := dateVariant.Add(time.Duration(w.DurationMinutes) * time.Minute).Hour()
-
-	if endHour < startHour {
-		endHour = 23
-	}
-
-	inInterval := false
-
-	for _, interval := range intervals {
-		if startHour >= int(interval.StartHour) && endHour < (int(interval.EndHour)) {
-			inInterval = true
-		}
-	}
-
-	fmt.Println(inInterval)
-
-	if inInterval == true {
-		w.StartDate = dateVariant
-		return true
-	}
-
-	durationInHours := uint32(endHour - startHour)
-	newStartHour := uint32(0)
-
-	for _, interval := range intervals {
-		deltaIntervalHours := interval.EndHour - interval.StartHour
-
-		if durationInHours < deltaIntervalHours {
-			if newStartHour <= interval.StartHour {
-				newStartHour = interval.StartHour
-				inInterval = true
-			}
-		}
-	}
-
-	if inInterval == true {
-		deltaHour := int(newStartHour) - dateVariant.Hour()
-		if deltaHour < 0 {
-			deltaHour *= -1
-		}
-		dateVariant = dateVariant.Add(time.Duration(deltaHour) * time.Hour)
-
-		w.StartDate = dateVariant
-		return true
-	} else {
-		return false
-	}
 }
