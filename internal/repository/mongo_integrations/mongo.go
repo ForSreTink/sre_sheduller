@@ -66,10 +66,10 @@ func NewMongoClient(ctx context.Context) (c *MongoClient, err error) {
 
 var _ repository.ReadWriteRepository = (*MongoClient)(nil)
 
-func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (results []*models.WorkItem, err error) {
+func (m *MongoClient) Add(ctx context.Context, work *models.WorkItem) (result *models.WorkItem, err error) {
 
-	result := work
-	if result.WorkId != "" {
+	result = work
+	if result.WorkId == "" {
 		result.WorkId = uuid.New().String()
 	}
 	out, err := m.worksCollection.InsertOne(ctx, work)

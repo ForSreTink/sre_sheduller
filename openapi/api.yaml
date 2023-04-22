@@ -28,7 +28,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/works'
+                $ref: '#/components/schemas/work'
         '400':
           description: Bad request
           content:
