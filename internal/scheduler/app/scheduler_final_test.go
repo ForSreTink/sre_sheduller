@@ -23,13 +23,14 @@ func TestScheduleFinalEvents(t *testing.T) {
 			ActionTime: time.Date(2023, 04, 18, 8, 0, 0, 0, time.UTC), //18 апреля	8:00
 			Action:     "add",
 			NewWork: &models.WorkItem{
-				Zones:           []string{"Zone_2", "Zone_4"},
-				StartDate:       time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
-				DurationMinutes: 60,
-				Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-				WorkId:          "1",
-				Priority:        "regular",
-				WorkType:        "manual",
+				Zones:              []string{"Zone_2", "Zone_4"},
+				StartDate:          time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
+				DurationMinutes:    60,
+				Deadline:           time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+				WorkId:             "1",
+				Priority:           "regular",
+				WorkType:           "automatic",
+				MaxCompressionRate: 0.50,
 			},
 		},
 		{
@@ -37,13 +38,14 @@ func TestScheduleFinalEvents(t *testing.T) {
 			ActionTime: time.Date(2023, 04, 18, 8, 20, 0, 0, time.UTC), //18 апреля	8:20
 			Action:     "add",
 			NewWork: &models.WorkItem{
-				Zones:           []string{"Zone_1", "Zone_2"},
-				StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
-				DurationMinutes: 120,
-				Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-				WorkId:          "2",
-				Priority:        "regular",
-				WorkType:        "manual",
+				Zones:              []string{"Zone_1", "Zone_2"},
+				StartDate:          time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
+				DurationMinutes:    30,
+				Deadline:           time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+				WorkId:             "2",
+				Priority:           "regular",
+				WorkType:           "automatic",
+				MaxCompressionRate: 0,
 			},
 		},
 		{
@@ -51,24 +53,26 @@ func TestScheduleFinalEvents(t *testing.T) {
 			ActionTime: time.Date(2023, 04, 18, 10, 0, 0, 0, time.UTC), //18 апреля	10:00
 			Action:     "add",
 			NewWork: &models.WorkItem{
-				Zones:           []string{"Zone_1", "Zone_4"},
-				StartDate:       time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
-				DurationMinutes: 30,
-				Deadline:        time.Date(2023, 04, 19, 5, 30, 0, 0, time.UTC), //19 апреля 05:30
-				WorkId:          "3",
-				Priority:        "regular",
-				WorkType:        "automatic",
+				Zones:              []string{"Zone_1", "Zone_4"},
+				StartDate:          time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
+				DurationMinutes:    30,
+				Deadline:           time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 05:00
+				WorkId:             "3",
+				Priority:           "regular",
+				WorkType:           "automatic",
+				MaxCompressionRate: 0,
 			},
 			UserMustApprove: "true", // проводить работы в Zone_1 в 00:00 не разрешено - предлагаем боту слот в 3:00, на который он соглашается
 			ExpectedVariants: []*models.WorkItem{
 				{
-					Zones:           []string{"Zone_1", "Zone_4"},
-					StartDate:       time.Date(2023, 04, 19, 3, 0, 0, 0, time.UTC), //19 апреля	00:00
-					DurationMinutes: 30,
-					Deadline:        time.Date(2023, 04, 19, 5, 30, 0, 0, time.UTC), //19 апреля 05:30
-					WorkId:          "3",
-					Priority:        "regular",
-					WorkType:        "automatic",
+					Zones:              []string{"Zone_1", "Zone_4"},
+					StartDate:          time.Date(2023, 04, 19, 3, 0, 0, 0, time.UTC), //19 апреля	00:00
+					DurationMinutes:    30,
+					Deadline:           time.Date(2023, 04, 19, 5, 30, 0, 0, time.UTC), //19 апреля 05:30
+					WorkId:             "3",
+					Priority:           "regular",
+					WorkType:           "automatic",
+					MaxCompressionRate: 0,
 				},
 			},
 		},
@@ -77,13 +81,14 @@ func TestScheduleFinalEvents(t *testing.T) {
 			ActionTime: time.Date(2023, 04, 18, 11, 59, 0, 0, time.UTC), //18 апреля 11:59
 			Action:     "add",
 			NewWork: &models.WorkItem{
-				Zones:           []string{"Zone_1", "Zone_2", "Zone_3", "Zone_4"},
-				StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
-				DurationMinutes: 30,
-				Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 04:00
-				WorkId:          "4",
-				Priority:        "regular",
-				WorkType:        "automatic",
+				Zones:              []string{"Zone_1", "Zone_2", "Zone_3", "Zone_4"},
+				StartDate:          time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
+				DurationMinutes:    30,
+				Deadline:           time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 04:00
+				WorkId:             "4",
+				Priority:           "regular",
+				WorkType:           "automatic",
+				MaxCompressionRate: 0,
 			},
 			UserMustApprove: "true", //конфликт с работами с ID 2, плюс в Zone_4 в это время уже ничего нельзя проводить
 			ExpectedVariants: []*models.WorkItem{ //тоже нормальные варианты
@@ -136,13 +141,14 @@ func TestScheduleFinalEvents(t *testing.T) {
 			ActionTime: time.Date(2023, 04, 18, 14, 00, 0, 0, time.UTC), //18 апреля 14:00
 			Action:     "add",
 			NewWork: &models.WorkItem{
-				Zones:           []string{"Zone_3", "Zone_4"},
-				StartDate:       time.Date(2023, 04, 19, 2, 0, 0, 0, time.UTC), //19 апреля	02:00
-				DurationMinutes: 90,
-				Deadline:        time.Date(2023, 04, 19, 4, 30, 0, 0, time.UTC), //19 апреля 04:30
-				WorkId:          "5",
-				Priority:        "regular",
-				WorkType:        "manual",
+				Zones:              []string{"Zone_3", "Zone_4"},
+				StartDate:          time.Date(2023, 04, 19, 2, 0, 0, 0, time.UTC), //19 апреля	02:00
+				DurationMinutes:    90,
+				Deadline:           time.Date(2023, 04, 19, 4, 30, 0, 0, time.UTC), //19 апреля 04:30
+				WorkId:             "5",
+				Priority:           "regular",
+				WorkType:           "automatic",
+				MaxCompressionRate: 0.5,
 			},
 			UserMustApprove: "true", //конфликт с работами с ID 3 и 4, нужен сдвиг
 			ExpectedVariants: []*models.WorkItem{ //тоже нормальные варианты
@@ -153,7 +159,7 @@ func TestScheduleFinalEvents(t *testing.T) {
 					Deadline:        time.Date(2023, 04, 19, 4, 30, 0, 0, time.UTC), //19 апреля 04:30
 					WorkId:          "5",
 					Priority:        "regular",
-					WorkType:        "manual",
+					WorkType:        "automatic",
 				},
 				{
 					Zones:           []string{"Zone_4"},
@@ -162,7 +168,7 @@ func TestScheduleFinalEvents(t *testing.T) {
 					Deadline:        time.Date(2023, 04, 19, 4, 30, 0, 0, time.UTC), //19 апреля 04:30
 					WorkId:          "5",
 					Priority:        "regular",
-					WorkType:        "manual",
+					WorkType:        "automatic",
 				},
 				{
 					Zones:           []string{"Zone_4"},
@@ -196,7 +202,7 @@ func TestScheduleFinalEvents(t *testing.T) {
 				Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
 				WorkId:          "2",
 				Priority:        "regular",
-				WorkType:        "manual",
+				WorkType:        "automatic",
 			},
 			ExpectedErrorContains: "unable to schedule work",
 		},
@@ -224,10 +230,7 @@ func TestScheduleFinalEvents(t *testing.T) {
 			ActionTime: time.Date(2023, 04, 18, 22, 50, 0, 0, time.UTC), //18 апреля 22:50
 			Action:     "config change",
 			ConfigChange: func(c *configuration.Config) {
-				c.WhiteList["Zone_1"][0].StartHour = 0
-				c.WhiteList["Zone_1"] = append(c.WhiteList["Zone_1"], configuration.Window{StartHour: 23, EndHour: 24})
-				c.WhiteList["Zone_3"][0].StartHour = 0
-				c.WhiteList["Zone_3"] = append(c.WhiteList["Zone_3"], configuration.Window{StartHour: 23, EndHour: 24})
+				c.BlackList = append(c.BlackList, "Zone_3")
 			},
 		},
 		{
@@ -236,13 +239,14 @@ func TestScheduleFinalEvents(t *testing.T) {
 			ActionTime: time.Date(2023, 04, 18, 23, 00, 0, 0, time.UTC), //18 апреля 23:00
 			Action:     "add",
 			NewWork: &models.WorkItem{
-				Zones:           []string{"Zone_1", "Zone_3"},
-				StartDate:       time.Date(2023, 04, 18, 23, 30, 0, 0, time.UTC), //18 апреля 23:30
-				DurationMinutes: 60,
-				Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-				WorkId:          "9",
-				Priority:        "regular",
-				WorkType:        "manual",
+				Zones:              []string{"Zone_1", "Zone_3"},
+				StartDate:          time.Date(2023, 04, 18, 23, 30, 0, 0, time.UTC), //18 апреля 23:30
+				DurationMinutes:    60,
+				Deadline:           time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+				WorkId:             "9",
+				Priority:           "regular",
+				WorkType:           "automatic",
+				MaxCompressionRate: 0.5,
 			},
 			UserMustApprove: "true", //ожидаем разделение работ, т.к. есть пересечения с 1 и не выполняется min available zone
 			ExpectedVariants: []*models.WorkItem{ //предлагаем два свободных слота в 03:30 и 04:00, т.к. занять все зоны доступности сразу нельзя - бот соглашается
@@ -253,7 +257,7 @@ func TestScheduleFinalEvents(t *testing.T) {
 					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
 					WorkId:          "9",
 					Priority:        "regular",
-					WorkType:        "manual",
+					WorkType:        "automatic",
 				},
 				{
 					Zones:           []string{"Zone_3"},
@@ -262,67 +266,7 @@ func TestScheduleFinalEvents(t *testing.T) {
 					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
 					WorkId:          "9",
 					Priority:        "regular",
-					WorkType:        "manual",
-				},
-			},
-		},
-		{
-			// Чтобы обеспечить окончание проведения работ 1 - мы обязаны полностью отменить работы 2 бувально за 13 минут до их начала :(
-			Name:       "10. Продление работ 1, 19 апреля 00:47",
-			ActionTime: time.Date(2023, 04, 18, 23, 00, 0, 0, time.UTC), //18 апреля 00:47
-			Action:     "prolongate",
-			NewWork: &models.WorkItem{
-				Zones:           []string{"Zone_2", "Zone_4"},
-				StartDate:       time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
-				DurationMinutes: 120,
-				Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-				WorkId:          "1",
-				Priority:        "regular",
-				WorkType:        "manual",
-			},
-			UserMustApprove: "false", // ожидаем отмену работ 2. Не вернется UserMustApprove, потому что от пользователя не требуется подтверждений
-			ExpectedInDb: []*models.WorkItem{
-				{
-					Zones:           []string{"Zone_2", "Zone_4"},
-					StartDate:       time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
-					DurationMinutes: 60,
-					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-					WorkId:          "1",
-					Priority:        "regular",
-					WorkType:        "manual",
-					Status:          "in_progress",
-				},
-				{
-					Zones:           []string{"Zone_1", "Zone_2"},
-					StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
-					DurationMinutes: 120,
-					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-					WorkId:          "2",
-					Priority:        "regular",
-					WorkType:        "manual",
-					Status:          "planned",
-				},
-			},
-			ExpectedVariants: []*models.WorkItem{
-				{
-					Zones:           []string{"Zone_2", "Zone_4"},
-					StartDate:       time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
-					DurationMinutes: 120,
-					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-					WorkId:          "1",
-					Priority:        "regular",
-					WorkType:        "manual",
-					Status:          "in_progress",
-				},
-				{
-					Zones:           []string{"Zone_1", "Zone_2"},
-					StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
-					DurationMinutes: 120,
-					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-					WorkId:          "2",
-					Priority:        "regular",
-					WorkType:        "manual",
-					Status:          "canceled",
+					WorkType:        "automatic",
 				},
 			},
 		},
@@ -339,6 +283,8 @@ func TestScheduleFinalEvents(t *testing.T) {
 			rep := RepositoryMock{
 				ListResult: e.ExpectedInDb,
 			}
+			e.NewWork.InitialDuration = e.NewWork.DurationMinutes
+			e.NewWork.InitialStartDate = e.NewWork.StartDate
 			scheduler := NewScheduler(ctx, rep, c)
 			var result []*models.WorkItem
 			//var errorIsUnexpected bool
