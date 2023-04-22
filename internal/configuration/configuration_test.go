@@ -17,8 +17,8 @@ func TestConfigSuccees(t *testing.T) {
 		configurator := NewConfigurator(ctx, unitTestConfigName)
 		configurator.Run()
 		time.Sleep(2 * time.Second)
-		if configurator.Data.TimeCompressionRate != 0.90 {
-			t.Errorf("wrong TimeCompressionRate in config file %s: want 0.60, got %v", unitTestConfigName, configurator.Data.TimeCompressionRate)
+		if configurator.Data.MinAvialableZones == 2 {
+			t.Errorf("wrong MinAvialableZones in config file %s: want 2, got %v", unitTestConfigName, configurator.Data.MinAvialableZones)
 		}
 		//todo check other fields automaitically
 	})
