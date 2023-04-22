@@ -95,8 +95,8 @@ func (sch *Scheduler) MoveWork(wis []*models.WorkItem) (schedule []*models.WorkI
 	return
 }
 
-func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.WorkItem, errorIsUnexpected bool, err error) {
-	errorIsUnexpected = true
+func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.WorkItem, needUserApprove bool, err error) {
+	needUserApprove = false
 	from := wi.StartDate.Add(time.Minute * time.Duration(-1*Max(sch.Config.MaxWorkDurationMinutes.Automatic, sch.Config.MaxWorkDurationMinutes.Manual)))
 	to := wi.StartDate.Add(24 * time.Hour * time.Duration(sch.Config.MaxDeadlineDays)).Add(time.Minute * time.Duration(-1*wi.DurationMinutes))
 
@@ -109,7 +109,6 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 	//При получении заявок на ручные работы отдавать им приоритет, отменяя работы автоматического типа.
 	newSchedule, wiChanges, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
-		errorIsUnexpected = false
 		err = zoneErr
 	}
 	if len(newSchedule) == 0 {
