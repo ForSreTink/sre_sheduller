@@ -42,6 +42,7 @@ func TestScheduleWorkSuccees(t *testing.T) {
 			{
 				Zones:           []string{"zone1"},
 				StartDate:       testTime.Add(time.Duration(7) * time.Hour),
+				Deadline:        testTime.Add(time.Duration(24) * time.Hour),
 				DurationMinutes: 30,
 				WorkId:          "testId",
 				Priority:        "critical",
@@ -49,6 +50,7 @@ func TestScheduleWorkSuccees(t *testing.T) {
 			{
 				Zones:           []string{"zone3"},
 				StartDate:       testTime.Add(time.Duration(8) * time.Hour),
+				Deadline:        testTime.Add(time.Duration(24) * time.Hour),
 				DurationMinutes: 30,
 				WorkId:          "testId",
 				Priority:        "critical",
@@ -144,10 +146,10 @@ func TestProlongateWorkSuccees(t *testing.T) {
 		}
 		if len(result) == 0 {
 			t.Errorf("Expect non-zero works count in result: %v", err)
+		} else {
+			if result[0].DurationMinutes != testItem.DurationMinutes {
+				t.Errorf("Unexpected work DurationMinutes got: %v, want %v", result[0].DurationMinutes, testItem.DurationMinutes)
+			}
 		}
-		if result[0].DurationMinutes != testItem.DurationMinutes {
-			t.Errorf("Unexpected work DurationMinutes got: %v, want %v", result[0].DurationMinutes, testItem.DurationMinutes)
-		}
-
 	})
 }

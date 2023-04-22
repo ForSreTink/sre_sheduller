@@ -446,14 +446,16 @@ func (sch *Scheduler) moveToNextAvailable(sugestedAllZonesSchedule map[string][]
 	}
 	var resultZoneSchedule []*IntervalWork
 	sugestedStartTime := wi.StartDate
+	sugestedStartTimeWithPause := sugestedStartTime
 	sugestedEndTime := sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
+	sugestedEndTimeWithPause := sugestedEndTime
 	for sugestedEndTime.Before(wi.Deadline) {
 		moved := false
 		// проверяем интервал работ на предмет пересечения с работами в зоне
-		checkInterval, _ := interval.New(sugestedStartTime, sugestedEndTime)
+		var maxpause int32
+		checkInterval, _ := interval.New(sugestedStartTimeWithPause, sugestedEndTimeWithPause)
 		for z, zoneSchedule := range sugestedAllZonesSchedule {
-
-			if currentZone == "" || currentZone == z {
+			if (currentZone == "" || currentZone == z) && len(zoneSchedule) > 0 {
 				// сортируем по startDate
 				sort.Slice(zoneSchedule, func(i, j int) bool {
 					return zoneSchedule[i].Work.StartDate.Before(zoneSchedule[j].Work.StartDate)
@@ -461,16 +463,43 @@ func (sch *Scheduler) moveToNextAvailable(sugestedAllZonesSchedule map[string][]
 				resultZoneSchedule = append(resultZoneSchedule, zoneSchedule...)
 				for _, zi := range zoneSchedule {
 					pause := sch.Config.PausesMinutes[z]
+					if pause > maxpause {
+						maxpause = pause
+					}
 					zoneCheckInterval, _ := interval.New(
-						checkInterval.Start().Add(time.Duration(-1*pause)),
-						checkInterval.End().Add(time.Duration(pause)))
-					if zi.Span.IsIntersection(zoneCheckInterval) {
-						sugestedStartTime = MaxTime(sugestedStartTime, zi.Span.End())
+						checkInterval.Start().Add(time.Duration(-1*pause)*time.Minute),
+						checkInterval.End().Add(time.Duration(pause)*time.Minute))
+					if zi.Span.IsIntersection(zoneCheckInterval) && zi.Span.Start() != zoneCheckInterval.End() && zi.Span.End() != zoneCheckInterval.Start() {
+						sugestedStartTime = zi.Span.End()
+						sugestedStartTimeWithPause = zi.Span.End().Add(time.Duration(1*pause) * time.Minute)
 						/// TODO поиск начала интервала сободного времени
 						sugestedEndTime = sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
+						sugestedEndTimeWithPause = sugestedStartTimeWithPause.Add(time.Duration(wi.DurationMinutes) * time.Minute)
+						checkInterval, _ = interval.New(sugestedStartTimeWithPause, sugestedEndTimeWithPause)
 						moved = true
 						break
 					}
+				}
+				if moved {
+					break
+				}
+			}
+			hasFreeWindow := checkZoneAvailabe(resultZoneSchedule, checkInterval)
+			if hasFreeWindow {
+				resultSchedule := copyIntervalWork(sugestedAllZonesSchedule)
+				sort.Slice(wi.Zones, func(i, j int) bool {
+					return wi.Zones[i] < wi.Zones[j]
+				})
+				for _, z := range wi.Zones {
+					resultWi := *wi
+					resultWi.StartDate = checkInterval.Start()
+					resultSchedule[z] = append(resultSchedule[z], &IntervalWork{Work: &resultWi, Span: &checkInterval})
+				}
+				minIntervalOk, zones := sch.checkMinAvailableZones(resultSchedule, &checkInterval)
+				if minIntervalOk {
+					startTime = sugestedStartTime
+					availableInZones = zones
+					return
 				}
 			}
 		}
@@ -478,27 +507,9 @@ func (sch *Scheduler) moveToNextAvailable(sugestedAllZonesSchedule map[string][]
 			continue
 		}
 
-		hasFreeWindow := checkZoneAvailabe(resultZoneSchedule, checkInterval)
-		if hasFreeWindow {
-			resultSchedule := copyIntervalWork(sugestedAllZonesSchedule)
-			sort.Slice(wi.Zones, func(i, j int) bool {
-				return wi.Zones[i] < wi.Zones[j]
-			})
-			for _, z := range wi.Zones {
-				resultWi := *wi
-				resultWi.StartDate = checkInterval.Start()
-				resultSchedule[z] = append(resultSchedule[z], &IntervalWork{Work: &resultWi, Span: &checkInterval})
-			}
-			minIntervalOk, zones := sch.checkMinAvailableZones(resultSchedule, &checkInterval)
-			if minIntervalOk {
-				startTime = sugestedStartTime
-				availableInZones = zones
-				return
-			}
-		}
-
-		sugestedStartTime = sugestedEndTime
-		sugestedEndTime = sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
+		sugestedStartTimeWithPause = checkInterval.End().Add(time.Duration(maxpause) * time.Minute)
+		sugestedEndTimeWithPause = sugestedStartTimeWithPause.Add(time.Duration(wi.DurationMinutes) * time.Minute)
+		sugestedEndTime = sugestedStartTimeWithPause.Add(time.Duration(wi.DurationMinutes) * time.Minute)
 	}
 	err = fmt.Errorf("unable to move work to another time before deadline")
 	return
@@ -584,33 +595,42 @@ func (sch *Scheduler) checkZoneLists(zone string, wi *models.WorkItem) (availavl
 			endHour++
 		}
 		if endDate.Day() > wi.StartDate.Day() {
-			workIntervals = append(workIntervals, configuration.Window{StartHourDuration: time.Duration(wi.StartDate.Hour()) * time.Hour, EndHourDuration: 24 * time.Hour})
-			workIntervals = append(workIntervals, configuration.Window{StartHourDuration: 0, EndHourDuration: time.Duration(endHour) * time.Hour})
+			workIntervals = append(workIntervals, configuration.Window{
+				StartHourDuration: time.Duration(wi.StartDate.Hour()) * time.Hour,
+				EndHourDuration:   24 * time.Hour,
+			})
+			workIntervals = append(workIntervals, configuration.Window{
+				StartHourDuration: 0,
+				EndHourDuration:   time.Duration(endHour) * time.Hour,
+			})
 		}
 		if endHour != 0 {
-			workIntervals = append(workIntervals, configuration.Window{StartHourDuration: time.Duration(wi.StartDate.Hour()) * time.Hour, EndHourDuration: time.Duration(endHour) * time.Hour})
+			workIntervals = append(workIntervals, configuration.Window{
+				StartHourDuration: time.Duration(wi.StartDate.Hour()) * time.Hour,
+				EndHourDuration:   time.Duration(endHour) * time.Hour,
+			})
 		}
 
 		for _, workInterval := range workIntervals {
 			isInWindow := false
 			for _, window := range windows {
 				// без учета пауз
-				if workInterval.EndHour <= window.StartHour { //раньше текущего интервала
+				if workInterval.EndHourDuration <= window.StartHourDuration { //раньше текущего интервала
 					continue
 				}
-				if workInterval.EndHour > window.StartHour {
-					if workInterval.StartHour < window.StartHour { //наползает в начале
+				if workInterval.EndHourDuration > window.StartHourDuration {
+					if workInterval.StartHourDuration < window.StartHourDuration { //наползает в начале
 						break
 					}
-					if workInterval.StartHour >= window.StartHour && workInterval.EndHour <= window.EndHour { //целиком в текущем интервале
+					if workInterval.StartHourDuration >= window.StartHourDuration && workInterval.EndHourDuration <= window.EndHourDuration { //целиком в текущем интервале
 						isInWindow = true
 						break
 					}
-					if workInterval.StartHour >= window.StartHour && workInterval.EndHour > window.EndHour { //наползает в конце
+					if workInterval.StartHourDuration >= window.StartHourDuration && workInterval.EndHourDuration > window.EndHourDuration { //наползает в конце
 						break
 					}
 				}
-				if workInterval.StartHour < window.EndHour && workInterval.EndHour > window.EndHour { //больше интервала с обеих сторон
+				if workInterval.StartHourDuration < window.EndHourDuration && workInterval.EndHourDuration > window.EndHourDuration { //больше интервала с обеих сторон
 					break
 				}
 				continue

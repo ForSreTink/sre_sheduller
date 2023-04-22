@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -135,25 +136,25 @@ func (c *Configurator) readConfig() (config Config, err error) {
 
 	for name := range config.WhiteList {
 		for idx := range config.WhiteList[name] {
-			startString := config.WhiteList[name][idx].StartHour
-			endString := config.WhiteList[name][idx].EndHour
+			startString := strings.Replace(config.WhiteList[name][idx].StartHour, ":", "h", -1) + "m"
+			endString := strings.Replace(config.WhiteList[name][idx].EndHour, ":", "h", -1) + "m"
 
-			startDuration, errParse := time.Parse("15:04", startString)
+			startDuration, errParse := time.ParseDuration(startString)
 			fmt.Println(startDuration)
 			if errParse != nil {
 				err = errParse
 				return
 			}
-			startDuration = startDuration.AddDate(1970, 0, 0)
-			endDuration, errParse := time.Parse("15:04", endString)
+			// startDuration = startDuration.AddDate(1970, 0, 0)
+			endDuration, errParse := time.ParseDuration(endString)
 			if errParse != nil {
 				err = errParse
 				return
 			}
-			endDuration = endDuration.AddDate(1970, 0, 0)
-			fmt.Println(endDuration.Unix())
-			config.WhiteList[name][idx].StartHourDuration = time.Duration(startDuration.Unix())
-			config.WhiteList[name][idx].EndHourDuration = time.Duration(endDuration.Unix())
+			// endDuration = endDuration.AddDate(1970, 0, 0)
+			// fmt.Println(endDuration.Unix())
+			config.WhiteList[name][idx].StartHourDuration = startDuration
+			config.WhiteList[name][idx].EndHourDuration = endDuration
 		}
 	}
 	return
