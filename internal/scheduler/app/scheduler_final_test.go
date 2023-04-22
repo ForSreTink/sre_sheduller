@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 	"workScheduler/internal/configuration"
@@ -15,14 +16,16 @@ const (
 )
 
 type TestEvent struct {
-	Name             string
-	ExpectedInDb     []*models.WorkItem
-	NewWork          *models.WorkItem
-	Action           string
-	ActionTime       time.Time
-	UserMustApprove  bool
-	ExpectedVariants []*models.WorkItem
-	ConfigChange     func(*configuration.Config)
+	Name                  string
+	ExpectedInDb          []*models.WorkItem
+	AppendToExpectedInDb  []*models.WorkItem
+	NewWork               *models.WorkItem
+	Action                string
+	ActionTime            time.Time
+	UserMustApprove       bool
+	ExpectedVariants      []*models.WorkItem
+	ExpectedErrorContains string
+	ConfigChange          func(*configuration.Config)
 }
 
 func TestScheduleEvents(t *testing.T) {
@@ -64,7 +67,7 @@ func TestScheduleEvents(t *testing.T) {
 				Zones:           []string{"Zone_1", "Zone_4"},
 				StartDate:       time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
 				DurationMinutes: 30,
-				Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 05:00
+				Deadline:        time.Date(2023, 04, 19, 5, 30, 0, 0, time.UTC), //19 апреля 05:30
 				WorkId:          "3",
 				Priority:        "regular",
 				WorkType:        "automatic",
@@ -75,7 +78,7 @@ func TestScheduleEvents(t *testing.T) {
 					Zones:           []string{"Zone_1", "Zone_4"},
 					StartDate:       time.Date(2023, 04, 19, 3, 0, 0, 0, time.UTC), //19 апреля	00:00
 					DurationMinutes: 30,
-					Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 05:00
+					Deadline:        time.Date(2023, 04, 19, 5, 30, 0, 0, time.UTC), //19 апреля 05:30
 					WorkId:          "3",
 					Priority:        "regular",
 					WorkType:        "automatic",
@@ -90,13 +93,35 @@ func TestScheduleEvents(t *testing.T) {
 				Zones:           []string{"Zone_1", "Zone_2", "Zone_3", "Zone_4"},
 				StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
 				DurationMinutes: 30,
-				Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 05:00
+				Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 04:00
 				WorkId:          "4",
 				Priority:        "regular",
 				WorkType:        "automatic",
 			},
 			UserMustApprove: true, //конфликт с работами с ID 2, плюс в Zone_4 в это время уже ничего нельзя проводить
-			ExpectedVariants: []*models.WorkItem{ //предлагаем два свободных слота в 03:30 и 04:00, т.к. занять все зоны доступности сразу нельзя - бот соглашается
+			ExpectedVariants: []*models.WorkItem{ //тоже нормальные варианты
+				{
+					Zones:           []string{"Zone_1", "Zone_2", "Zone_3"},
+					StartDate:       time.Date(2023, 04, 19, 3, 30, 0, 0, time.UTC), //19 апреля 01:00
+					DurationMinutes: 30,
+					Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 05:00
+					WorkId:          "4",
+					Priority:        "regular",
+					WorkType:        "automatic",
+					Status:          "planned",
+				},
+				{
+					Zones:           []string{"Zone_4"},
+					StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	04:00
+					DurationMinutes: 30,
+					Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 05:00
+					WorkId:          "4",
+					Priority:        "regular",
+					WorkType:        "automatic",
+					Status:          "planned",
+				},
+			},
+			AppendToExpectedInDb: []*models.WorkItem{ //предлагаем два свободных слота в 03:30 и 04:00, т.к. занять все зоны доступности сразу нельзя - бот соглашается
 				{
 					Zones:           []string{"Zone_1", "Zone_3"},
 					StartDate:       time.Date(2023, 04, 19, 3, 30, 0, 0, time.UTC), //19 апреля	01:00
@@ -105,6 +130,7 @@ func TestScheduleEvents(t *testing.T) {
 					WorkId:          "4",
 					Priority:        "regular",
 					WorkType:        "automatic",
+					Status:          "planned",
 				},
 				{
 					Zones:           []string{"Zone_2", "Zone_4"},
@@ -114,6 +140,7 @@ func TestScheduleEvents(t *testing.T) {
 					WorkId:          "4",
 					Priority:        "regular",
 					WorkType:        "automatic",
+					Status:          "planned",
 				},
 			},
 		},
@@ -125,13 +152,53 @@ func TestScheduleEvents(t *testing.T) {
 				Zones:           []string{"Zone_3", "Zone_4"},
 				StartDate:       time.Date(2023, 04, 19, 2, 0, 0, 0, time.UTC), //19 апреля	02:00
 				DurationMinutes: 90,
-				Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
-				WorkId:          "4",
+				Deadline:        time.Date(2023, 04, 19, 4, 30, 0, 0, time.UTC), //19 апреля 04:30
+				WorkId:          "5",
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
+			UserMustApprove: true, //конфликт с работами с ID 3 и 4, нужен сдвиг
+			ExpectedVariants: []*models.WorkItem{ //тоже нормальные варианты
+				{
+					Zones:           []string{"Zone_3"},
+					StartDate:       time.Date(2023, 04, 19, 2, 0, 0, 0, time.UTC), //19 апреля	02:00
+					DurationMinutes: 90,
+					Deadline:        time.Date(2023, 04, 19, 4, 30, 0, 0, time.UTC), //19 апреля 04:30
+					WorkId:          "5",
+					Priority:        "regular",
+					WorkType:        "manual",
+				},
+				{
+					Zones:           []string{"Zone_4"},
+					StartDate:       time.Date(2023, 04, 19, 3, 0, 0, 0, time.UTC), //19 апреля	02:00
+					DurationMinutes: 90,
+					Deadline:        time.Date(2023, 04, 19, 4, 30, 0, 0, time.UTC), //19 апреля 04:30
+					WorkId:          "5",
+					Priority:        "regular",
+					WorkType:        "manual",
+				},
+				{
+					Zones:           []string{"Zone_4"},
+					StartDate:       time.Date(2023, 04, 19, 4, 30, 0, 0, time.UTC), //19 апреля 03:30 -> 04:30
+					DurationMinutes: 30,
+					Deadline:        time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 05:00
+					WorkId:          "4",
+					Priority:        "regular",
+					WorkType:        "automatic",
+				},
+				{
+					Zones:           []string{"Zone_4"},
+					StartDate:       time.Date(2023, 04, 19, 5, 0, 0, 0, time.UTC), //19 апреля 03:00 -> 05:00
+					DurationMinutes: 30,
+					Deadline:        time.Date(2023, 04, 19, 5, 30, 0, 0, time.UTC), //19 апреля 05:30
+					WorkId:          "3",
+					Priority:        "regular",
+					WorkType:        "automatic",
+				},
+			},
 		},
 		{
+			//Эту заявку система будет обязана отклонить, т.к. слотов для таких длинных работ не остается из-за конфликта с ID 5, которые были согласованы ранее переноса!
 			Name:       "6. Перенос работ 2, 18 апреля 15:00",
 			ActionTime: time.Date(2023, 04, 18, 11, 59, 0, 0, time.UTC), //18 апреля 15:00
 			Action:     "move",
@@ -144,8 +211,11 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
+			ExpectedErrorContains: "unable to schedule work",
 		},
 		{
+			// Эта заявка также не может быть удовлетворена из-за конфликта, слоты в 4:30 и 5:00 - занимать сразу в двух зонах нельзя,
+			// передвигать 4 и 3 на более позднее время - тоже нельзя из-за дедлайна
 			Name:       "7. Заявка на проведение работ 7, 18 апреля 19:00",
 			ActionTime: time.Date(2023, 04, 18, 19, 00, 0, 0, time.UTC), //18 апреля 19:00
 			Action:     "add",
@@ -158,8 +228,11 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
+			ExpectedErrorContains: "unable to schedule work",
 		},
 		{
+			// ??? Нельзя провести работы 3 раньше - хоть расписание теперь это позволяет, алгоритм должен быть
+			// устойчивым и должен стараться вносить минимальные изменения в расписание!
 			Name:       "8. Изменение конфига, 18 апреля 19:00",
 			ActionTime: time.Date(2023, 04, 18, 22, 50, 0, 0, time.UTC), //18 апреля 22:50
 			Action:     "config change",
@@ -171,6 +244,7 @@ func TestScheduleEvents(t *testing.T) {
 			},
 		},
 		{
+			// За счет предыдущего изменения конфига можем предложить последовательное проведение работы в двух разных зонах доступности - клиент соглашается.
 			Name:       "9. Заявка на проведение работ 9, 18 апреля 23:00",
 			ActionTime: time.Date(2023, 04, 18, 23, 00, 0, 0, time.UTC), //18 апреля 23:00
 			Action:     "add",
@@ -206,6 +280,7 @@ func TestScheduleEvents(t *testing.T) {
 			},
 		},
 		{
+			// Чтобы обеспечить окончание проведения работ 1 - мы обязаны полностью отменить работы 2 бувально за 13 минут до их начала :(
 			Name:       "10. Продление работ 1, 19 апреля 00:47",
 			ActionTime: time.Date(2023, 04, 18, 23, 00, 0, 0, time.UTC), //18 апреля 00:47
 			Action:     "prolongate",
@@ -219,6 +294,28 @@ func TestScheduleEvents(t *testing.T) {
 				WorkType:        "manual",
 			},
 			UserMustApprove: false, // ожидаем отмену работ 2. Не вернется UserMustApprove, потому что от пользователя не требуется подтверждений
+			ExpectedInDb: []*models.WorkItem{
+				{
+					Zones:           []string{"Zone_2", "Zone_4"},
+					StartDate:       time.Date(2023, 04, 19, 0, 0, 0, 0, time.UTC), //19 апреля	00:00
+					DurationMinutes: 60,
+					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+					WorkId:          "1",
+					Priority:        "regular",
+					WorkType:        "manual",
+					Status:          "in_progress",
+				},
+				{
+					Zones:           []string{"Zone_1", "Zone_2"},
+					StartDate:       time.Date(2023, 04, 19, 1, 0, 0, 0, time.UTC), //19 апреля	01:00
+					DurationMinutes: 120,
+					Deadline:        time.Date(2023, 04, 19, 4, 0, 0, 0, time.UTC), //19 апреля 04:00
+					WorkId:          "2",
+					Priority:        "regular",
+					WorkType:        "manual",
+					Status:          "planned",
+				},
+			},
 			ExpectedVariants: []*models.WorkItem{
 				{
 					Zones:           []string{"Zone_2", "Zone_4"},
@@ -228,6 +325,7 @@ func TestScheduleEvents(t *testing.T) {
 					WorkId:          "1",
 					Priority:        "regular",
 					WorkType:        "manual",
+					Status:          "in_progress",
 				},
 				{
 					Zones:           []string{"Zone_1", "Zone_2"},
@@ -272,17 +370,28 @@ func TestScheduleEvents(t *testing.T) {
 				t.Fatalf("%s: unexpected event action\n", e.Name)
 			}
 
-			if !e.UserMustApprove && err != nil {
+			if !e.UserMustApprove && err != nil && e.ExpectedErrorContains == "" {
 				t.Errorf("%s: unexpected error %v, %v\n", e.Name, err, result)
 			}
+
+			if e.ExpectedErrorContains != "" {
+				if err == nil {
+					t.Errorf("%s: expected error with message [%v], got no errors \n", e.Name, e.ExpectedErrorContains)
+				}
+				if err != nil && !strings.Contains(err.Error(), e.ExpectedErrorContains) {
+					t.Errorf("%s: expected error with message [%v], got [%v]\n", e.Name, e.ExpectedErrorContains, err.Error())
+				}
+				fmt.Printf("%s: event processing return expected error [%v]\n", e.Name, err)
+			}
+
 			if e.UserMustApprove {
 				if !userMustApprove {
-					t.Errorf("%s: unexpected error %v, %v\n", e.Name, err, result)
+					t.Errorf("%s: unexpected error %v, result: %v\n", e.Name, err, result)
 				} else {
 					fmt.Printf("%s: event processing return userMustApprove\n", e.Name)
 				}
 				if len(e.ExpectedVariants) > 0 {
-					fmt.Printf("%s: event processing return variants:  %v", e.Name, result)
+					// fmt.Printf("%s: event processing return variants:  %v", e.Name, result)
 					if len(e.ExpectedVariants) != len(result) {
 
 						t.Errorf("%s: event processing return unexpected variants count: %v, expected %v\n", e.Name, len(result), len(e.ExpectedVariants))
@@ -298,23 +407,37 @@ func TestScheduleEvents(t *testing.T) {
 						for i, res := range result {
 							CompareWorkItems(t, e.Name, res, e.ExpectedVariants[i])
 						}
-						fmt.Printf("%s: event processing return variants %v\n", e.Name, result)
+						// fmt.Printf("%s: event processing return variants %v\n", e.Name, result)
 					}
 
 				}
 			}
 			if err == nil {
-				if len(result) == 0 {
-					t.Errorf("%s: event processing return unexpected results count: %v, expected >= 1\n", e.Name, len(result))
-				} else {
-					// successfully planned 1 or planned 1 + movement of others
-					CompareWorkItems(t, e.Name, result[0], e.NewWork)
+				if e.Action != "config change" {
+					if len(result) == 0 {
+						t.Errorf("%s: event processing return unexpected results count: %v, expected >= 1\n", e.Name, len(result))
+					} else {
+						// successfully planned 1 or planned 1 + movement of others
+						CompareWorkItems(t, e.Name, result[0], e.NewWork)
+					}
 				}
 			}
 
-			fmt.Printf("%s: event processed successfully\n", e.Name)
+			if t.Failed() {
+				fmt.Printf("%s: event processed with test errors\n", e.Name)
+			} else {
+				fmt.Printf("%s: event processed successfully\n", e.Name)
+			}
+
 			if i < len(testEvents)-1 {
-				testEvents[i+1].ExpectedInDb = append(e.ExpectedInDb, result...)
+				if len(testEvents[i+1].ExpectedInDb) == 0 {
+					if len(e.AppendToExpectedInDb) > 0 {
+						testEvents[i+1].ExpectedInDb = append(e.ExpectedInDb, e.AppendToExpectedInDb...)
+					} else {
+						testEvents[i+1].ExpectedInDb = append(e.ExpectedInDb, result...)
+					}
+				}
+
 			}
 		})
 	}

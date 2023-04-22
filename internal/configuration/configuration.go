@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -164,7 +165,10 @@ func (c *Configurator) validateConfig(conf *Config) error {
 			zones[name] = ts
 		}
 	}
-
+	// sort black list alphabeticaly
+	sort.Slice(conf.BlackList, func(i, j int) bool {
+		return conf.BlackList[i] < conf.BlackList[j]
+	})
 	if conf.MinAvialableZones > int32(len(conf.WhiteList)-2) { //|| conf.MinAvialableZones < 2
 		errStr += fmt.Sprintf("MinAvialableZones must not be greater then zone count=%v, got MinAvialableZones=%v; ", int32(len(conf.WhiteList)-2), conf.MinAvialableZones)
 	}
