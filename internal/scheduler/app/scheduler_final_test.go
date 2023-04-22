@@ -22,7 +22,7 @@ type TestEvent struct {
 	NewWork               *models.WorkItem
 	Action                string
 	ActionTime            time.Time
-	UserMustApprove       bool
+	UserMustApprove       string
 	ExpectedVariants      []*models.WorkItem
 	ExpectedErrorContains string
 	ConfigChange          func(*configuration.Config)
@@ -72,7 +72,7 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "automatic",
 			},
-			UserMustApprove: true, // проводить работы в Zone_1 в 00:00 не разрешено - предлагаем боту слот в 3:00, на который он соглашается
+			UserMustApprove: "true", // проводить работы в Zone_1 в 00:00 не разрешено - предлагаем боту слот в 3:00, на который он соглашается
 			ExpectedVariants: []*models.WorkItem{
 				{
 					Zones:           []string{"Zone_1", "Zone_4"},
@@ -98,7 +98,7 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "automatic",
 			},
-			UserMustApprove: true, //конфликт с работами с ID 2, плюс в Zone_4 в это время уже ничего нельзя проводить
+			UserMustApprove: "true", //конфликт с работами с ID 2, плюс в Zone_4 в это время уже ничего нельзя проводить
 			ExpectedVariants: []*models.WorkItem{ //тоже нормальные варианты
 				{
 					Zones:           []string{"Zone_1", "Zone_2", "Zone_3"},
@@ -157,7 +157,7 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
-			UserMustApprove: true, //конфликт с работами с ID 3 и 4, нужен сдвиг
+			UserMustApprove: "true", //конфликт с работами с ID 3 и 4, нужен сдвиг
 			ExpectedVariants: []*models.WorkItem{ //тоже нормальные варианты
 				{
 					Zones:           []string{"Zone_3"},
@@ -257,7 +257,7 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
-			UserMustApprove: true, //ожидаем разделение работ, т.к. есть пересечения с 1 и не выполняется min available zone
+			UserMustApprove: "true", //ожидаем разделение работ, т.к. есть пересечения с 1 и не выполняется min available zone
 			ExpectedVariants: []*models.WorkItem{ //предлагаем два свободных слота в 03:30 и 04:00, т.к. занять все зоны доступности сразу нельзя - бот соглашается
 				{
 					Zones:           []string{"Zone_1"},
@@ -293,7 +293,7 @@ func TestScheduleEvents(t *testing.T) {
 				Priority:        "regular",
 				WorkType:        "manual",
 			},
-			UserMustApprove: false, // ожидаем отмену работ 2. Не вернется UserMustApprove, потому что от пользователя не требуется подтверждений
+			UserMustApprove: "false", // ожидаем отмену работ 2. Не вернется UserMustApprove, потому что от пользователя не требуется подтверждений
 			ExpectedInDb: []*models.WorkItem{
 				{
 					Zones:           []string{"Zone_2", "Zone_4"},
@@ -370,8 +370,8 @@ func TestScheduleEvents(t *testing.T) {
 				t.Fatalf("%s: unexpected event action\n", e.Name)
 			}
 
-			if !e.UserMustApprove && err != nil && e.ExpectedErrorContains == "" {
-				t.Errorf("%s: unexpected error %v, %v\n", e.Name, err, result)
+			if e.UserMustApprove == "false" && err != nil && e.ExpectedErrorContains == "" {
+				t.Errorf("%s: unexpected error %v, result: %v\n", e.Name, err, result)
 			}
 
 			if e.ExpectedErrorContains != "" {
@@ -384,9 +384,9 @@ func TestScheduleEvents(t *testing.T) {
 				fmt.Printf("%s: event processing return expected error [%v]\n", e.Name, err)
 			}
 
-			if e.UserMustApprove {
+			if e.UserMustApprove == "true" {
 				if !userMustApprove {
-					t.Errorf("%s: unexpected error %v, result: %v\n", e.Name, err, result)
+					t.Errorf("%s: expected userMustApprove %v, err: %v\n", e.Name, userMustApprove, err)
 				} else {
 					fmt.Printf("%s: event processing return userMustApprove\n", e.Name)
 				}
