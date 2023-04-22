@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	finalTestConfigName = "../test_configs/scheduler_final_config.yml"
+	finalTestConfigName = "../test_configs/scheduler_pre_final_config.yml"
 )
 
 type TestEvent struct {
