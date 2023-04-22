@@ -39,7 +39,7 @@ const (
 
 // Defines values for WorkStatus.
 const (
-	WorkStatusCancelled  WorkStatus = "cancelled"
+	WorkStatuscanceled  WorkStatus = "canceled"
 	WorkStatusInProgress WorkStatus = "in_progress"
 	WorkStatusPlanned    WorkStatus = "planned"
 )
@@ -58,7 +58,7 @@ const (
 
 // Defines values for WorksStatus.
 const (
-	WorksStatusCancelled  WorksStatus = "cancelled"
+	WorksStatuscanceled  WorksStatus = "canceled"
 	WorksStatusInProgress WorksStatus = "in_progress"
 	WorksStatusPlanned    WorksStatus = "planned"
 )
@@ -71,7 +71,7 @@ const (
 
 // Defines values for GetscheduleParamsStatuses.
 const (
-	Cancelled  GetscheduleParamsStatuses = "cancelled"
+	canceled  GetscheduleParamsStatuses = "canceled"
 	InProgress GetscheduleParamsStatuses = "in_progress"
 	Planned    GetscheduleParamsStatuses = "planned"
 )

@@ -233,7 +233,7 @@ paths:
               type: string
               enum:
                 - planned
-                - cancelled
+                - canceled
                 - in_progress
       responses:
         '200':
@@ -316,7 +316,7 @@ components:
           type: string
           enum:
             - planned
-            - cancelled
+            - canceled
             - in_progress
         workType:
           type: string
@@ -355,7 +355,7 @@ components:
             type: string
             enum:
               - planned
-              - cancelled
+              - canceled
               - in_progress
           workType:
             type: string
@@ -371,7 +371,7 @@ components:
       type: string
       enum:
         - planned
-        - cancelled
+        - canceled
         - in_progress
     error:
       type: object

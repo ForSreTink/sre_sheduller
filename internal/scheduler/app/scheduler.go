@@ -21,7 +21,7 @@ const (
 	WorkTypeManual    = "manual"
 	StatusInProgress  = "in_progress"
 	StatusPlanned     = "planned"
-	StatusCancelled   = "cancelled"
+	Statuscanceled    = "canceled"
 )
 
 type Scheduler struct {
@@ -486,7 +486,7 @@ func moveOrCancelOthers(zoneSchedule []*IntervalWork, checkInterval interval.Spa
 					err = fmt.Errorf("unable to cancel in progress work %v", interv.Work.WorkId)
 					return
 				} else {
-					interv.Work.Status = StatusCancelled
+					interv.Work.Status = Statuscanceled
 					changes = append(changes, interv.Work)
 					break
 					// todo переносить или сжимать автоматические вместо отмены

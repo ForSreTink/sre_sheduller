@@ -258,13 +258,15 @@ func (a *Api) CancelWorkById(w http.ResponseWriter, r *http.Request, workId stri
 	}
 
 	for idx := range works {
-		works[idx].Status = "cancelled"
+		works[idx].Status = "canceled"
 		works[idx], err = a.RepoData.Update(r.Context(), works[idx])
 		if err != nil {
 			a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 			return
 		}
 	}
+
+	fmt.Println("AAAAAAAAAAA")
 
 	work_b, err := json.Marshal(works)
 	if err != nil {

@@ -335,7 +335,7 @@ func TestScheduleEvents(t *testing.T) {
 					WorkId:          "2",
 					Priority:        "regular",
 					WorkType:        "manual",
-					Status:          "cancelled",
+					Status:          "canceled",
 				},
 			},
 		},
