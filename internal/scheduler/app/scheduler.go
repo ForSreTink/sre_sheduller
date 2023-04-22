@@ -110,7 +110,7 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 	newSchedule, mustApprove, zoneErr := sch.chekScheduleChange(allZonesSchedule, wi, true, (wi.WorkType == WorkTypeManual), (wi.Priority == PriorityCritical))
 	if zoneErr != nil {
 		if len(newSchedule) == 0 {
-			err = errors.Errorf("Unable to shedule new work: %s", zoneErr)
+			err = errors.Errorf("Unable to schedule new work: %s", zoneErr)
 		} else {
 			err = zoneErr
 		}
@@ -265,7 +265,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 					if ok {
 						plannedWI[moreAvailable].Work.Zones = tryWi.Zones
 						sugestedSchedule[z] = append(sugestedSchedule[z], &newIntervalWork)
-						userMustApprove = true
+						userMustApprove = wi.StartDate != tryWi.StartDate
 						continue
 					}
 				}
@@ -289,7 +289,7 @@ func (sch *Scheduler) chekScheduleChange(zonesSchedule Schedule, wi *models.Work
 				intervalAvailabilityForPlanned = append(intervalAvailabilityForPlanned, availableInZones)
 				sugestedSchedule[z] = append(sugestedSchedule[z], &newIntervalWork)
 				schedule = append(schedule, scheduleWIZone...)
-				userMustApprove = true
+				userMustApprove = wi.StartDate != startTime
 				continue
 			}
 		}
@@ -465,7 +465,7 @@ func (sch *Scheduler) moveToNextAvailable(sugestedAllZonesSchedule map[string][]
 						checkInterval.Start().Add(time.Duration(-1*pause)),
 						checkInterval.End().Add(time.Duration(pause)))
 					if zi.Span.IsIntersection(zoneCheckInterval) {
-						sugestedStartTime = zi.Span.End()
+						sugestedStartTime = MaxTime(sugestedStartTime, zi.Span.End())
 						/// TODO поиск начала интервала сободного времени
 						sugestedEndTime = sugestedStartTime.Add(time.Duration(wi.DurationMinutes) * time.Minute)
 						moved = true
@@ -684,6 +684,13 @@ func copyIntervalWork(m map[string][]*IntervalWork) (copy map[string][]*Interval
 
 func Max(x int32, y int32) int32 {
 	if x > y {
+		return x
+	} else {
+		return y
+	}
+}
+func MaxTime(x time.Time, y time.Time) time.Time {
+	if x.Before(y) {
 		return x
 	} else {
 		return y
