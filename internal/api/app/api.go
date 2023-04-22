@@ -211,7 +211,7 @@ func (a *Api) AddWork(w http.ResponseWriter, r *http.Request) {
 				a.writeError(w, http.StatusInternalServerError, "Internal error", err, []*models.WorkItem{})
 				return
 			}
-			added_work = append(added_work, work...)
+			added_work = append(added_work, work)
 		} else {
 			_, err := a.RepoData.Update(r.Context(), work)
 			if err != nil {

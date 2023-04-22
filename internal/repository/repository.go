@@ -31,6 +31,6 @@ type ReadRepository interface {
 }
 
 type WriteRepository interface {
-	Add(ctx context.Context, work *models.WorkItem) ([]*models.WorkItem, error)
+	Add(ctx context.Context, work *models.WorkItem) (*models.WorkItem, error)
 	Update(ctx context.Context, work *models.WorkItem) (*models.WorkItem, error)
 }

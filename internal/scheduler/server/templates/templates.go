@@ -40,7 +40,6 @@ func NewTemplate(data repository.ReadRepository) *Template {
 func NewTeplateData(ts time.Time) TemplateData {
 	tmpl := TemplateData{}
 	days := []string{
-		ts.AddDate(0, 0, -2).Format(time.DateOnly),
 		ts.AddDate(0, 0, -1).Format(time.DateOnly),
 		ts.Format(time.DateOnly),
 		ts.AddDate(0, 0, 1).Format(time.DateOnly),
@@ -70,7 +69,7 @@ func NewTeplateData(ts time.Time) TemplateData {
 
 func (t *Template) Generate(w http.ResponseWriter, r *http.Request) {
 	ts := time.Now()
-	startDate := ts.AddDate(0, 0, -2)
+	startDate := ts.AddDate(0, 0, -1)
 	endDate := ts.AddDate(0, 0, 2)
 	tmpls := map[string][]TemplateData{}
 
