@@ -82,8 +82,7 @@ func (a *Api) validateAddWork(work *models.WorkItem) error {
 		errStr += "Can't schedule work for zone not in whitelist, excepted critical work; "
 	}
 
-	delta = work.StartDate.Sub(ts)
-	if delta <= 0 {
+	if work.StartDate.Unix() <= ts.Unix() {
 		errStr += "Start Date can't be in past; "
 	}
 	if work.DurationMinutes < a.Scheduller.Config.MinWorkDurationMinutes.Automatic && work.WorkType == "automatic" {
