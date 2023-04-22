@@ -112,6 +112,8 @@ func (sch *Scheduler) ScheduleWork(wi *models.WorkItem) (schedule []*models.Work
 	if zoneErr != nil {
 		if len(newSchedule) == 0 {
 			err = errors.Errorf("Unable to shedule new work: %s", zoneErr)
+		} else {
+			err = zoneErr
 		}
 	}
 	if len(newSchedule) == 0 {
